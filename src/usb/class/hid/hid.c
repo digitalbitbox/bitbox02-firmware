@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "hid.h"
-#include "usb_desc.h"
+//#include "usb_desc.h"
 #if !defined(TESTING)
 #include "usb_protocol.h"
 #endif

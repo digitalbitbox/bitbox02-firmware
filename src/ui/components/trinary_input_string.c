@@ -34,10 +34,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef TESTING
-#include <driver_init.h>
-#endif
-
 #define EMPTY_CHAR '_'
 #define MASK_CHAR_WIDTH 6
 #define BLINK_RATE 200

@@ -15,6 +15,7 @@
 #include "screen.h"
 
 #include <hal_delay.h>
+#include <platform/platform_config.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>

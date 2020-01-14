@@ -16,6 +16,7 @@
 
 #include "image.h"
 #include "ui_images.h"
+#include "ui_logos.h"
 
 #include <hardfault.h>
 #include <random.h>

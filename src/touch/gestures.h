@@ -21,15 +21,12 @@
 #include <ui/component.h>
 
 #ifndef TESTING
-#include "qtouch.h"
-#define TOUCH_NUM_BUTTONS DEF_NUM_CHANNELS
-#define TOUCH_NUM_SLIDERS DEF_NUM_SCROLLERS
+#include <qtouch.h>
 #define MAX_SLIDER_POS (DEF_SCROLLER_RESOLUTION - 1)
 #else
-#define TOUCH_NUM_BUTTONS (8)
-#define TOUCH_NUM_SLIDERS (2)
 #define MAX_SLIDER_POS (255)
 #endif
+
 #define SLIDER_POSITION_ONE_THIRD (MAX_SLIDER_POS / 3)
 #define SLIDER_POSITION_TWO_THIRD (MAX_SLIDER_POS / 3 * 2)
 
@@ -38,13 +35,6 @@ typedef struct {
     uint16_t position;
     int32_t velocity;
 } gestures_slider_data_t;
-
-#if PLATFORM_BITBOXBASE == 1
-enum bitboxbase_button_id_t {
-    BITBOXBASE_BUTTON_LEFT,
-    BITBOXBASE_BUTTON_RIGHT,
-};
-#endif
 
 /**
  * Detects a gestures and calls the respective callback.
@@ -55,9 +45,5 @@ enum bitboxbase_button_id_t {
  * when `reset` is `true`.
  */
 void gestures_detect(bool reset, bool emit_without_release);
-
-#if PLATFORM_BITBOXBASE == 1
-enum bitboxbase_button_id_t gestures_button_which(const event_t* event);
-#endif
 
 #endif

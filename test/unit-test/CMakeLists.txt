@@ -19,7 +19,8 @@
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter -Wno-missing-prototypes -Wno-missing-declarations -Wno-implicit-function-declaration -Wno-bad-function-cast")
 
 set(DBB-FILTERED-SOURCES
-  ${DBB-FIRMWARE-SOURCES}
+  ${DBB-FIRMWARE-COMMON-SOURCES}
+  ${DBB-FIRMWARE-UI-COMMON-SOURCES}
   ${DBB-FIRMWARE-UI-SOURCES}
   ${DBB-FIRMWARE-PROTOBUF-SOURCES}
   ${FIRMWARE-U2F-SOURCES}
@@ -46,9 +47,21 @@ find_package(Nanopb REQUIRED)
 
 add_library(bitbox
   STATIC
-  ${DBB-FILTERED-SOURCES}
+  ${DBB-FIRMWARE-COMMON-SOURCES}
+  ${DBB-FIRMWARE-COMPONENT-SOURCES}
+  ${DBB-FIRMWARE-WORKFLOW-SOURCES}
+  ${APP-BTC-SOURCES}
+  ${DBB-FIRMWARE-UI-COMMON-SOURCES}
+  ${DBB-FIRMWARE-UI-SOURCES}
+  ${DBB-FIRMWARE-PROTOBUF-SOURCES}
+  ${DBB-FIRMWARE-USB-SOURCES}
+  ${DBB-FIRMWARE-USART-SOURCES}
   ${CTAES-SOURCES}
   ${ETHEREUM-SOURCES}
+  ${FIRMWARE-U2F-SOURCES}
+  # The usb.c file mixes together hardware and testing code... This should be split.
+  ${CMAKE_SOURCE_DIR}/src/usb/usb.c
+  ${CMAKE_SOURCE_DIR}/src/usb/usb_frame.c
   framework/mock_blocking.c
   framework/mock_screen.c
   framework/mock_screen_stack.c
@@ -87,7 +100,7 @@ set_source_files_properties(
 target_include_directories(bitbox SYSTEM PUBLIC ${NANOPB_INCLUDE_DIRS})
 target_include_directories(bitbox PRIVATE ${CMAKE_SOURCE_DIR}/external/FatFs/source)
 target_compile_definitions(bitbox PUBLIC "PB_NO_PACKED_STRUCTS=1" "PB_FIELD_16BIT=1")
-target_compile_definitions(bitbox PUBLIC "PRODUCT_BITBOX_MULTI=1" "APP_BTC=1" "APP_LTC=1" "APP_U2F=1" "APP_ETH=1")
+target_compile_definitions(bitbox PUBLIC "PLATFORM_BITBOX02=1" "EDITION_STANDARD=1" "APP_BTC=1" "APP_LTC=1" "APP_U2F=1" "APP_ETH=1")
 add_dependencies(bitbox generate-protobufs)
 
 # Since noiseprotocol and wallycore are external projects we need to specify the dependency
@@ -102,6 +115,7 @@ target_link_libraries(bitbox
     wallycore
     secp256k1
     bignum
+    util
   PRIVATE
     base32
     ctaes
@@ -138,7 +152,7 @@ target_include_directories(
   ${INCLUDES}
   ${CMAKE_BINARY_DIR}/src
 )
-target_compile_definitions(u2f-util PUBLIC "TESTING" PRODUCT_BITBOX_MULTI "APP_U2F=1" "APP_BTC=1" "APP_LTC=1" "APP_ETH=1")
+target_compile_definitions(u2f-util PUBLIC "TESTING" "PLATFORM_BITBOX02=1" "EDITION_STANDARD=1" "APP_U2F=1" "APP_BTC=1" "APP_LTC=1" "APP_ETH=1")
 target_compile_definitions(u2f-util PUBLIC "USE_KECCAK")
 
 

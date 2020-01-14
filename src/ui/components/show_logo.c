@@ -15,6 +15,7 @@
 #include "show_logo.h"
 #include "image.h"
 #include "ui_images.h"
+#include "ui_logos.h"
 
 #include <hardfault.h>
 #include <screen.h>

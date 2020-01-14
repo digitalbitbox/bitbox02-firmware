@@ -81,7 +81,7 @@ static void _sha256(const uint8_t* bytes, size_t bytes_len, uint8_t* out)
     sha256_finish(&ctx, out);
 }
 
-static void _reset(void)
+void btc_sign_reset(void)
 {
     _state = STATE_INIT;
     _coin_params = NULL;
@@ -103,7 +103,7 @@ static void _reset(void)
 
 static app_btc_sign_error_t _error(app_btc_sign_error_t err)
 {
-    _reset();
+    btc_sign_reset();
     return err;
 }
 
@@ -134,7 +134,7 @@ app_btc_sign_error_t app_btc_sign_init(
         // legacy not supported
         return _error(APP_BTC_SIGN_ERR_INVALID_INPUT);
     }
-    _reset();
+    btc_sign_reset();
     _coin_params = coin_params;
     _script_type = request->script_type;
     _bip44_account = request->bip44_account;
@@ -292,7 +292,7 @@ static app_btc_sign_error_t _sign_input_pass2(
         next_out->index = _index;
     } else {
         // Done with inputs pass2 -> done completely.
-        _reset();
+        btc_sign_reset();
         next_out->type = BTCSignNextResponse_Type_DONE;
     }
     return APP_BTC_SIGN_OK;
@@ -472,10 +472,3 @@ app_btc_sign_error_t app_btc_sign_output(
     }
     return APP_BTC_SIGN_OK;
 }
-
-#ifdef TESTING
-void tst_app_btc_reset(void)
-{
-    _reset();
-}
-#endif

@@ -23,6 +23,7 @@
 #include <usb/noise.h>
 #include <usb/usb_packet.h>
 #include <usb/usb_processing.h>
+#include <version.h>
 #include <workflow/status.h>
 #include <workflow/unlock.h>
 

@@ -25,10 +25,10 @@
 #endif
 
 #include "gestures.h"
-#include "gestures_impl.h"
 #if PLATFORM_BITBOXBASE == 1
 #include "gestures_bitboxbase.h"
 #endif
+
 #include "ui/event.h"
 #include "ui/event_handler.h"
 #include "util.h"

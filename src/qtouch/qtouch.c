@@ -33,6 +33,12 @@ Copyright (c) 2017 Microchip. All rights reserved.
 #include <driver_init.h>
 #include <platform_config.h>
 
+#if PLATFORM_BITBOXBASE == 1
+#include "qtouch_bitboxbase.h"
+#else
+#include "qtouch_bitbox02.h"
+#endif
+
 /*----------------------------------------------------------------------------
  *   prototypes
  *----------------------------------------------------------------------------*/

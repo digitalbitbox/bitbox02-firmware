@@ -20,6 +20,8 @@
 
 #include "mock_gestures.h"
 #include "mock_qtouch.h"
+
+#include <touch/gestures_impl.h>
 #include <util.h>
 
 #define MEASUREMENT_PERIOD 125

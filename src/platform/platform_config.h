@@ -15,67 +15,108 @@
 #ifndef _PLATFORM_CONFIG_H
 #define _PLATFORM_CONFIG_H
 
-// Force the PRODUCT_ defines to be 0 or 1, so they can be used safely without risk of typos.
+#if !defined(PLATFORM_BITBOX02)
+#define PLATFORM_BITBOX02 0
+#elif PLATFORM_BITBOX02 != 0 && PLATFORM_BITBOX02 != 1
+#error "Invalid value for PLATFORM_BITBOX02."
+#endif
+
+#if !defined(PLATFORM_BITBOXBASE)
+#define PLATFORM_BITBOXBASE 0
+#elif PLATFORM_BITBOXBASE != 0 && PLATFORM_BITBOXBASE != 1
+#error "Invalid value for PLATFORM_BITBOXBASE."
+#endif
+
+#if !defined(EDITION_STANDARD)
+#define EDITION_STANDARD 0
+#elif EDITION_STANDARD != 0 && EDITION_STANDARD != 1
+#error "Invalid value for EDITION_STANDARD."
+#endif
+#if !defined(EDITION_BTCONLY)
+#define EDITION_BTCONLY 0
+#elif EDITION_BTCONLY != 0 && EDITION_BTCONLY != 1
+#error "Invalid value for EDITION_BTCONLY."
+#endif
+#if !defined(EDITION_FACTORYSETUP)
+#define EDITION_FACTORYSETUP 0
+#elif EDITION_FACTORYSETUP != 0 && EDITION_FACTORYSETUP != 1
+#error "Invalid value for EDITION_FACTORYSETUP."
+#endif
+
+#if PLATFORM_BITBOX02 == 1
+
+#if EDITION_STANDARD == 1
+#define PRODUCT_BITBOX_MULTI 1
+#elif EDITION_BTCONLY == 1
+#define PRODUCT_BITBOX_BTCONLY 1
+#elif EDITION_FACTORYSETUP == 1
+#define PRODUCT_BITBOX02_FACTORYSETUP 1
+#else
+#error "Invalid EDITION value."
+#endif
+
+#elif PLATFORM_BITBOXBASE == 1
+
+#if EDITION_STANDARD == 1
+#define PRODUCT_BITBOX_BASE 1
+#elif EDITION_FACTORYSETUP == 1
+#define PRODUCT_BITBOXBASE_FACTORYSETUP 1
+#else
+#error "Invalid EDITION value."
+#endif
+
+#else
+#error "Invalid PRODUCT value."
+#endif
 
 #if !defined(PRODUCT_BITBOX_MULTI)
 #define PRODUCT_BITBOX_MULTI 0
 #elif PRODUCT_BITBOX_MULTI != 1
-#error "invalid product value"
+#error "invalid PRODUCT_BITBOX_MULTI value"
 #endif
 
 #if !defined(PRODUCT_BITBOX_BTCONLY)
 #define PRODUCT_BITBOX_BTCONLY 0
 #elif PRODUCT_BITBOX_BTCONLY != 1
-#error "invalid product value"
+#error "invalid PRODUCT_BITBOX_BTCONLY value"
 #endif
 
 #if !defined(PRODUCT_BITBOX_BASE)
 #define PRODUCT_BITBOX_BASE 0
 #elif PRODUCT_BITBOX_BASE != 1
-#error "invalid product value"
+#error "invalid PRODUCT_BITBOX_BASE value"
 #endif
 
 #if !defined(PRODUCT_BITBOX02_FACTORYSETUP)
 #define PRODUCT_BITBOX02_FACTORYSETUP 0
 #elif PRODUCT_BITBOX02_FACTORYSETUP != 1
-#error "invald product value"
+#error "invald PRODUCT_BITBOX02_FACTORYSETUP value"
 #endif
-
 #if !defined(PRODUCT_BITBOXBASE_FACTORYSETUP)
 #define PRODUCT_BITBOXBASE_FACTORYSETUP 0
 #elif PRODUCT_BITBOXBASE_FACTORYSETUP != 1
-#error "invald product value"
+#error "invald PRODUCT_BITBOXBASE_FACTORYSETUP value"
 #endif
 
 // Derive other useful definitions from the product.
 
 #if PRODUCT_BITBOX_MULTI == 1
-#define PLATFORM_BITBOX02 1
-#define PLATFORM_BITBOXBASE 0
 #define FACTORYSETUP 0
 #endif
 
 #if PRODUCT_BITBOX_BTCONLY == 1
-#define PLATFORM_BITBOX02 1
-#define PLATFORM_BITBOXBASE 0
 #define FACTORYSETUP 0
 #endif
 
 #if PRODUCT_BITBOX_BASE == 1
-#define PLATFORM_BITBOX02 0
-#define PLATFORM_BITBOXBASE 1
 #define FACTORYSETUP 0
 #endif
 
 #if PRODUCT_BITBOX02_FACTORYSETUP == 1
-#define PLATFORM_BITBOX02 1
-#define PLATFORM_BITBOXBASE 0
 #define FACTORYSETUP 1
 #endif
 
 #if PRODUCT_BITBOXBASE_FACTORYSETUP == 1
-#define PLATFORM_BITBOX02 0
-#define PLATFORM_BITBOXBASE 1
 #define FACTORYSETUP 1
 #endif
 

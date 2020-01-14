@@ -31,6 +31,7 @@
 #include <usb/u2f/u2f_keys.h>
 #include <usb/usb_packet.h>
 #include <usb/usb_processing.h>
+#include <version.h>
 #include <wally_crypto.h>
 #include <workflow/confirm.h>
 #include <workflow/status.h>
