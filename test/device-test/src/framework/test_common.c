@@ -22,6 +22,7 @@
 #include <usb/class/usb_desc.h>
 #include <usb/device/usbdc.h>
 #include <usb/usb.h>
+#include <usb/usb_desc_bytes.h>
 
 #include "screen.h"
 #include "util.h"

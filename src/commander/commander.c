@@ -30,6 +30,7 @@
 #include <hardfault.h>
 #include <keystore.h>
 #include <memory/memory.h>
+#include <platform_config.h>
 #include <random.h>
 #include <screen.h>
 #include <sd.h>

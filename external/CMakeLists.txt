@@ -136,12 +136,14 @@ set_property(TARGET wallycore
   PROPERTY IMPORTED_LOCATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libwallycore.a)
 set_target_properties(wallycore PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/include)
 set_target_properties(wallycore PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/include)
+add_dependencies(wallycore libwally-core)
 
 add_library(secp256k1 STATIC IMPORTED GLOBAL)
 set_property(TARGET secp256k1
   PROPERTY IMPORTED_LOCATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libsecp256k1.a)
 set_target_properties(secp256k1 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
 set_target_properties(secp256k1 PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
+add_dependencies(secp256k1 libwally-core)
 
 
 if(CMAKE_CROSSCOMPILING)

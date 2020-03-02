@@ -25,6 +25,7 @@
 #include "qtouch.h"
 #include "screen.h"
 #include "touch/gestures.h"
+#include "touch/gestures_bitboxbase.h"
 #include "ui/component.h"
 #include "ui/components/label.h"
 #include "ui/oled/oled.h"

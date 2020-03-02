@@ -115,7 +115,7 @@ static void _test_btc_sign_init(void** state)
         assert_int_equal(next.index, 0);
     }
     { // test invalid version
-        tst_app_btc_reset();
+        btc_sign_reset();
         BTCSignInitRequest invalid = init_req_valid;
         for (invalid.version = 0; invalid.version < 10; invalid.version++) {
             if (invalid.version == 1 || invalid.version == 2) {
@@ -125,25 +125,25 @@ static void _test_btc_sign_init(void** state)
         }
     }
     { // test invalid locktime
-        tst_app_btc_reset();
+        btc_sign_reset();
         BTCSignInitRequest invalid = init_req_valid;
         invalid.locktime = 500000000;
         assert_int_equal(APP_BTC_SIGN_ERR_INVALID_INPUT, app_btc_sign_init(&invalid, &next));
     }
     { // test invalid inputs
-        tst_app_btc_reset();
+        btc_sign_reset();
         BTCSignInitRequest invalid = init_req_valid;
         invalid.num_inputs = 0;
         assert_int_equal(APP_BTC_SIGN_ERR_INVALID_INPUT, app_btc_sign_init(&invalid, &next));
     }
     { // test invalid outputs
-        tst_app_btc_reset();
+        btc_sign_reset();
         BTCSignInitRequest invalid = init_req_valid;
         invalid.num_outputs = 0;
         assert_int_equal(APP_BTC_SIGN_ERR_INVALID_INPUT, app_btc_sign_init(&invalid, &next));
     }
     { // test invalid coin
-        tst_app_btc_reset();
+        btc_sign_reset();
         BTCSignInitRequest invalid = init_req_valid;
         invalid.coin = _BTCCoin_MIN - 1;
         assert_int_equal(APP_BTC_SIGN_ERR_INVALID_INPUT, app_btc_sign_init(&invalid, &next));
@@ -942,9 +942,9 @@ static void _test_overflow_output_ours(void** state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(_test_btc_sign),
         cmocka_unit_test(_test_btc_sign_init),
 
-        cmocka_unit_test(_test_btc_sign),
         cmocka_unit_test(_test_seeded),
         cmocka_unit_test(_test_script_type_p2wpkh_p2sh),
         cmocka_unit_test(_test_wrong_coin_input),

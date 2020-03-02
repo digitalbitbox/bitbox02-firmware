@@ -39,8 +39,6 @@ app_btc_sign_input(const BTCSignInputRequest* request, BTCSignNextResponse* next
 USE_RESULT app_btc_sign_error_t
 app_btc_sign_output(const BTCSignOutputRequest* request, BTCSignNextResponse* next_out);
 
-#ifdef TESTING
-void tst_app_btc_reset(void);
-#endif
+void btc_sign_reset(void);
 
 #endif

@@ -28,6 +28,7 @@
 #include <pukcc/curve_p256.h>
 #include <screen.h>
 #include <ui/components/ui_images.h>
+#include <ui/components/ui_logos.h>
 #include <ui/oled/oled.h>
 #include <ui/ugui/ugui.h>
 #if PLATFORM_BITBOXBASE == 1

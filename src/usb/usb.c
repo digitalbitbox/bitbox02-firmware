@@ -16,6 +16,7 @@
 #ifndef TESTING
 #include "hid_hww.h"
 #include "usb_desc.h"
+#include "usb_desc_bytes.h"
 #include "usbdc.h"
 #if APP_U2F == 1
 #include "u2f.h"

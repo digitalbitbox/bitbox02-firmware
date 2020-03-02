@@ -13,70 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(DBB-FIRMWARE-SOURCES
-  ${CMAKE_SOURCE_DIR}/src/firmware_main_loop.c
+set(DBB-FIRMWARE-COMMON-SOURCES
   ${CMAKE_SOURCE_DIR}/src/commander/commander.c
-  ${CMAKE_SOURCE_DIR}/src/commander/commander_btc.c
   ${CMAKE_SOURCE_DIR}/src/commander/commander_states.c
   ${CMAKE_SOURCE_DIR}/src/keystore.c
   ${CMAKE_SOURCE_DIR}/src/random.c
   ${CMAKE_SOURCE_DIR}/src/attestation.c
   ${CMAKE_SOURCE_DIR}/src/hardfault.c
-  ${CMAKE_SOURCE_DIR}/src/util.c
-  ${CMAKE_SOURCE_DIR}/src/util/util_string.c
   ${CMAKE_SOURCE_DIR}/src/sd.c
   ${CMAKE_SOURCE_DIR}/src/hww.c
   ${CMAKE_SOURCE_DIR}/src/memory/bitbox02_smarteeprom.c
   ${CMAKE_SOURCE_DIR}/src/memory/memory.c
-  ${CMAKE_SOURCE_DIR}/src/memory/mpu.c
-  ${CMAKE_SOURCE_DIR}/src/memory/nvmctrl.c
-  ${CMAKE_SOURCE_DIR}/src/memory/smarteeprom.c
   ${CMAKE_SOURCE_DIR}/src/salt.c
   ${CMAKE_SOURCE_DIR}/src/i2c_ecc.c
-  ${CMAKE_SOURCE_DIR}/src/touch/gestures.c
   ${CMAKE_SOURCE_DIR}/src/usb/noise.c
   ${CMAKE_SOURCE_DIR}/src/backup.c
   ${CMAKE_SOURCE_DIR}/src/restore.c
   ${CMAKE_SOURCE_DIR}/src/reset.c
   ${CMAKE_SOURCE_DIR}/src/cipher/cipher.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/blocking.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/cancel.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/workflow.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/trinary_input.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/confirm.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/confirm_time.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/status.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/password.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/password_enter.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/create_seed.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/unlock.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/show_mnemonic.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/restore_from_mnemonic.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/pairing.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/verify_pub.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/verify_recipient.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/verify_total.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/reboot.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/sdcard.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/backup.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/reset.c
-  ${CMAKE_SOURCE_DIR}/src/workflow/restore.c
-  ${CMAKE_SOURCE_DIR}/src/apps/common/bip32.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_common.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_params.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_sign.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_bip143.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/confirm_locktime_rbf.c
-  ${CMAKE_SOURCE_DIR}/src/apps/btc/confirm_multisig.c
   ${CMAKE_SOURCE_DIR}/src/queue.c
   ${CMAKE_SOURCE_DIR}/src/usb/usb_processing.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/reboot.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/restore.c
+  ${CMAKE_SOURCE_DIR}/src/apps/common/bip32.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/restore_from_mnemonic.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/workflow.c
 )
-set(DBB-FIRMWARE-SOURCES ${DBB-FIRMWARE-SOURCES} PARENT_SCOPE)
+set(DBB-FIRMWARE-COMMON-SOURCES ${DBB-FIRMWARE-COMMON-SOURCES} PARENT_SCOPE)
 
 set(DBB-FIRMWARE-USB-SOURCES
-  ${CMAKE_SOURCE_DIR}/src/usb/usb.c
-  ${CMAKE_SOURCE_DIR}/src/usb/usb_frame.c
   ${CMAKE_SOURCE_DIR}/src/usb/usb_packet.c
   ${CMAKE_SOURCE_DIR}/src/u2f/u2f_packet.c
 )
@@ -87,9 +52,7 @@ set(DBB-FIRMWARE-USART-SOURCES
 )
 set(DBB-FIRMWARE-USART-SOURCES ${DBB-FIRMWARE-USART-SOURCES} PARENT_SCOPE)
 
-set(DBB-FIRMWARE-UI-SOURCES
-    ${CMAKE_SOURCE_DIR}/src/screen.c
-    ${CMAKE_SOURCE_DIR}/src/ui/ugui/ugui.c
+set(DBB-FIRMWARE-UI-COMMON-SOURCES
     ${CMAKE_SOURCE_DIR}/src/ui/fonts/font_a_9X9.c
     ${CMAKE_SOURCE_DIR}/src/ui/fonts/font_a_11X12.c
     ${CMAKE_SOURCE_DIR}/src/ui/fonts/font_a_13X14.c
@@ -99,14 +62,26 @@ set(DBB-FIRMWARE-UI-SOURCES
     ${CMAKE_SOURCE_DIR}/src/ui/fonts/password_9X9.c
     ${CMAKE_SOURCE_DIR}/src/ui/fonts/password_11X12.c
     ${CMAKE_SOURCE_DIR}/src/ui/screen_stack.c
-    ${CMAKE_SOURCE_DIR}/src/ui/screen_process.c
     ${CMAKE_SOURCE_DIR}/src/ui/event_handler.c
     ${CMAKE_SOURCE_DIR}/src/ui/ui_util.c
+)
+set(DBB-FIRMWARE-UI-COMMON-SOURCES ${DBB-FIRMWARE-UI-COMMON-SOURCES} PARENT_SCOPE)
+
+# UI items that are tied to their platform.
+set(DBB-FIRMWARE-UI-SOURCES
+    ${CMAKE_SOURCE_DIR}/src/ui/components/show_logo.c
+    ${CMAKE_SOURCE_DIR}/src/ui/components/waiting.c
+    ${CMAKE_SOURCE_DIR}/src/ui/screen_process.c
+    ${CMAKE_SOURCE_DIR}/src/ui/ugui/ugui.c
+    ${CMAKE_SOURCE_DIR}/src/touch/gestures.c
+)
+set(DBB-FIRMWARE-UI-SOURCES ${DBB-FIRMWARE-UI-SOURCES} PARENT_SCOPE)
+
+# Component files that are not tied to a particular platform.
+set(DBB-FIRMWARE-COMPONENT-SOURCES
     ${CMAKE_SOURCE_DIR}/src/ui/components/trinary_choice.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/trinary_input_char.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/trinary_input_string.c
-    ${CMAKE_SOURCE_DIR}/src/ui/components/show_logo.c
-    ${CMAKE_SOURCE_DIR}/src/ui/components/waiting.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/entry_screen.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/knight_rider.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/right_arrow.c
@@ -129,58 +104,106 @@ set(DBB-FIRMWARE-UI-SOURCES
     ${CMAKE_SOURCE_DIR}/src/ui/components/ui_images.c
     ${CMAKE_SOURCE_DIR}/src/ui/components/confirm_transaction.c
 )
-set(DBB-FIRMWARE-UI-SOURCES ${DBB-FIRMWARE-UI-SOURCES} PARENT_SCOPE)
+set(DBB-FIRMWARE-COMPONENT-SOURCES ${DBB-FIRMWARE-COMPONENT-SOURCES} PARENT_SCOPE)
+
+# All workflows that don't depend on a particular platform.
+set(DBB-FIRMWARE-WORKFLOW-SOURCES
+  ${CMAKE_SOURCE_DIR}/src/workflow/blocking.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/cancel.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/trinary_input.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/confirm.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/confirm_time.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/status.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/password.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/password_enter.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/create_seed.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/unlock.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/show_mnemonic.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/pairing.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/verify_pub.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/verify_recipient.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/verify_total.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/sdcard.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/backup.c
+  ${CMAKE_SOURCE_DIR}/src/workflow/reset.c
+)
+set(DBB-FIRMWARE-WORKFLOW-SOURCES ${DBB-FIRMWARE-WORKFLOW-SOURCES} PARENT_SCOPE)
 
 set(DBB-BOOTLOADER-SOURCES
-  ${CMAKE_SOURCE_DIR}/src/util.c
   ${CMAKE_SOURCE_DIR}/src/pukcc/curve_p256.c
   ${CMAKE_SOURCE_DIR}/src/pukcc/pukcc.c
   ${CMAKE_SOURCE_DIR}/src/bootloader/bootloader.c
   ${CMAKE_SOURCE_DIR}/src/bootloader/startup.c
   ${CMAKE_SOURCE_DIR}/src/bootloader/mpu_regions.c
-  ${CMAKE_SOURCE_DIR}/src/memory/mpu.c
-  ${CMAKE_SOURCE_DIR}/src/memory/nvmctrl.c
   ${CMAKE_SOURCE_DIR}/src/queue.c
   ${CMAKE_SOURCE_DIR}/src/usb/usb_processing.c
   ${CMAKE_SOURCE_DIR}/src/ui/ugui/ugui.c
   ${CMAKE_SOURCE_DIR}/src/ui/fonts/font_a_9X9.c
-  ${CMAKE_SOURCE_DIR}/src/screen.c
   ${CMAKE_SOURCE_DIR}/src/hardfault.c
   ${CMAKE_SOURCE_DIR}/src/ui/components/ui_images.c
 )
 set(DBB-BOOTLOADER-SOURCES ${DBB-BOOTLOADER-SOURCES} PARENT_SCOPE)
 
 set(DRIVER-SOURCES
-  ${CMAKE_SOURCE_DIR}/src/platform/platform_init.c
+  ${CMAKE_SOURCE_DIR}/src/memory/mpu.c
+  ${CMAKE_SOURCE_DIR}/src/memory/nvmctrl.c
+  ${CMAKE_SOURCE_DIR}/src/memory/smarteeprom.c
+  ${CMAKE_SOURCE_DIR}/src/screen.c
   ${CMAKE_SOURCE_DIR}/src/platform/driver_init.c
+  ${CMAKE_SOURCE_DIR}/src/platform/platform_init.c
   ${CMAKE_SOURCE_DIR}/src/qtouch/qtouch.c
   ${CMAKE_SOURCE_DIR}/src/ui/oled/oled.c
 )
 set(DRIVER-SOURCES ${DRIVER-SOURCES} PARENT_SCOPE)
 
+# Modules that provide HW support for the BitBox02,
+# and don't depend on any PRODUCT_* macro definition.
 set(PLATFORM-BITBOX02-SOURCES
-  ${CMAKE_SOURCE_DIR}/src/sd_mmc/sd_mmc_start.c
   ${CMAKE_SOURCE_DIR}/src/usb/class/hid/hid.c
   ${CMAKE_SOURCE_DIR}/src/usb/class/hid/hww/hid_hww.c
   ${DBB-FIRMWARE-USB-SOURCES}
 )
 set(PLATFORM-BITBOX02-SOURCES ${PLATFORM-BITBOX02-SOURCES} PARENT_SCOPE)
 
+# Modules that provide HW support for the BitBoxBase,
+# and don't depend on any PRODUCT_* macro definition.
 set(PLATFORM-BITBOXBASE-SOURCES
   ${CMAKE_SOURCE_DIR}/src/platform/bitboxbase/leds.c
-  ${CMAKE_SOURCE_DIR}/src/usart/usart.c
   ${CMAKE_SOURCE_DIR}/src/usart/usart_hww.c
   ${DBB-FIRMWARE-USART-SOURCES}
 )
 set(PLATFORM-BITBOXBASE-SOURCES ${PLATFORM-BITBOXBASE-SOURCES} PARENT_SCOPE)
 
+# Modules specific to the BitBoxBase platform,
+# that depend on the PRODUCT_* macros.
+set(BITBOXBASE-ONLY-SOURCES
+  ${CMAKE_SOURCE_DIR}/src/usart/usart.c
+  )
+
+# Modules specific to the BitBox02 platform,
+# that depend on the PRODUCT_* macros.
+set(BITBOX02-ONLY-SOURCES
+  ${CMAKE_SOURCE_DIR}/src/usb/usb.c
+  ${CMAKE_SOURCE_DIR}/src/usb/usb_frame.c
+  ${CMAKE_SOURCE_DIR}/src/sd_mmc/sd_mmc_start.c
+  )
+
 set(BITBOXBASE-FIRMWARE-SOURCES
+  ${DBB-FIRMWARE-COMMON-SOURCES}
+  ${BITBOXBASE-ONLY-SOURCES}
   ${CMAKE_SOURCE_DIR}/src/bitboxbase/bitboxbase_background.c
   ${CMAKE_SOURCE_DIR}/src/bitboxbase/bitboxbase_watchdog.c
   ${CMAKE_SOURCE_DIR}/src/bitboxbase/bitboxbase_screensaver.c
   ${CMAKE_SOURCE_DIR}/src/bitboxbase/bitboxbase_status.c
 )
 set(BITBOXBASE-FIRMWARE-SOURCES ${BITBOXBASE-FIRMWARE-SOURCES} PARENT_SCOPE)
+
+set(BITBOX02-FIRMWARE-SOURCES
+  ${DBB-FIRMWARE-COMMON-SOURCES}
+  ${BITBOX02-ONLY-SOURCES}
+  ${CMAKE_SOURCE_DIR}/src/firmware_main_loop.c
+)
+set(BITBOX02-FIRMWARE-SOURCES ${BITBOX02-FIRMWARE-SOURCES} PARENT_SCOPE)
 
 set(CRYPTOAUTHLIB-SOURCES
   ${CMAKE_SOURCE_DIR}/src/securechip/securechip.c
@@ -233,12 +256,34 @@ set(SYSTEMINCLUDES ${SYSTEMINCLUDES} PARENT_SCOPE)
 #-----------------------------------------------------------------------------
 # Build embedded firmware
 
-
 # TODO: Not needed when building bootlaoder..
 # Since the nanopb is included in the source tree and not in the sysroot (/usr/local/arm-none-eabi) we have to disable searching in the sysroot.
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE NEVER)
 find_package(Nanopb REQUIRED)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+set(APP-BTC-SOURCES
+  ${CMAKE_SOURCE_DIR}/src/commander/commander_btc.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_common.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_params.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_sign.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/btc_bip143.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/confirm_multisig.c
+  ${CMAKE_SOURCE_DIR}/src/apps/btc/confirm_locktime_rbf.c
+  )
+set(APP-BTC-SOURCES ${APP-BTC-SOURCES} PARENT_SCOPE)
+
+get_property(WALLY_INCLUDES TARGET wallycore PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+
+add_library(util
+  ${CMAKE_SOURCE_DIR}/src/util.c
+  ${CMAKE_SOURCE_DIR}/src/util/util_string.c
+)
+target_include_directories(util PRIVATE ${INCLUDES})
+target_include_directories(util SYSTEM PUBLIC ${SYSTEMINCLUDES})
+target_include_directories(util SYSTEM PUBLIC ${NANOPB_INCLUDE_DIRS})
+target_include_directories(util SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/src)
 
 set(FIRMWARE-SOURCES
   ${DBB-FIRMWARE-SOURCES}
@@ -253,6 +298,7 @@ set(FIRMWARE-SOURCES
 
 set(BOOTLOADER-SOURCES
   ${DBB-BOOTLOADER-SOURCES}
+  ${DBB-FIRMWARE-UI-SOURCES}
   ${DRIVER-SOURCES}
 )
 
@@ -268,8 +314,35 @@ if(CMAKE_CROSSCOMPILING)
   get_property(CMSIS_INCLUDES TARGET CMSIS PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
   get_property(WALLY_INCLUDES TARGET wallycore PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
 
+  set(helper_libraries app_btc-btc app_btc-multi ui_common components workflows)
+  add_library(app_btc-btc ${APP-BTC-SOURCES})
+  target_compile_definitions(app_btc-btc PUBLIC "APP_BTC=1" "APP_LTC=0")
+  target_link_libraries(app_btc-btc noiseprotocol wallycore secp256k1)
+
+  add_library(app_btc-multi ${APP-BTC-SOURCES})
+  target_compile_definitions(app_btc-multi PUBLIC "APP_BTC=1" "APP_LTC=1")
+  target_link_libraries(app_btc-multi noiseprotocol wallycore secp256k1 util)
+
+  add_library(ui_common ${DBB-FIRMWARE-UI-COMMON-SOURCES})
+
+  add_library(components ${DBB-FIRMWARE-COMPONENT-SOURCES})
+  target_link_libraries(components ui_common)
+
+  add_library(workflows ${DBB-FIRMWARE-WORKFLOW-SOURCES})
+  target_link_libraries(workflows components secp256k1)
+
+
   foreach(include ${INCLUDES} ${SYSTEMINCLUDES} ${SAMD51A_INCLUDES} ${ASF4_INCLUDES} ${ASF4_MIN_INCLUDES} ${CMSIS_INCLUDES} ${NANOPB_INCLUDE_DIRS} ${WALLY_INCLUDES})
     list(APPEND RUST_INCLUDES -I${include})
+    target_include_directories(components SYSTEM PRIVATE ${include})
+    target_include_directories(workflows SYSTEM PRIVATE ${include})
+    foreach (library ${helper_libraries})
+      target_include_directories(${library} PRIVATE ${INCLUDES})
+      target_include_directories(${library} SYSTEM PUBLIC ${SYSTEMINCLUDES})
+      target_include_directories(${library} SYSTEM PUBLIC ${NANOPB_INCLUDE_DIRS})
+      target_include_directories(${library} SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/src)
+      target_link_libraries(${library} base32 util)
+    endforeach()
   endforeach()
 
   if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
@@ -279,6 +352,8 @@ if(CMAKE_CROSSCOMPILING)
     set(RUST_CARGO_FLAG "--release")
     set(RUSTFLAGS --remap-path-prefix=${CMAKE_CURRENT_SOURCE_DIR}/rust=src)
   endif()
+
+  add_dependencies(workflows generate-protobufs)
 
   set(LIBBITBOX02_RUST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust/bitbox02-rust)
   set(LIBBITBOX02_RUST_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/rust/bitbox02-rust/target)
@@ -376,6 +451,20 @@ if(CMAKE_CROSSCOMPILING)
   set(HEAP_SIZE "0x18000" CACHE STRING "Specify heap size for bootloader/firmware")
   set(HEAP_SIZE ${HEAP_SIZE} PARENT_SCOPE)
 
+  add_library(bitbox02-platform ${PLATFORM-BITBOX02-SOURCES})
+  target_link_libraries(bitbox02-platform asf4-drivers-min util workflows)
+  target_include_directories(bitbox02-platform PRIVATE ${INCLUDES})
+  target_include_directories(bitbox02-platform SYSTEM PUBLIC ${SYSTEMINCLUDES})
+  target_include_directories(bitbox02-platform SYSTEM PUBLIC ${NANOPB_INCLUDE_DIRS})
+  target_include_directories(bitbox02-platform SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/src)
+
+  add_library(bitboxbase-platform ${PLATFORM-BITBOXBASE-SOURCES})
+  target_link_libraries(bitboxbase-platform asf4-drivers util workflows)
+  target_include_directories(bitboxbase-platform PRIVATE ${INCLUDES})
+  target_include_directories(bitboxbase-platform SYSTEM PUBLIC ${SYSTEMINCLUDES})
+  target_include_directories(bitboxbase-platform SYSTEM PUBLIC ${NANOPB_INCLUDE_DIRS})
+  target_include_directories(bitboxbase-platform SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/src)
+
   # If a bootloader that locks the bootloader is flashed the bootloader area is permanently read-only.
   set(BOOTLOADERS-BITBOX02
     bootloader # Runs signed firmware
@@ -401,6 +490,7 @@ if(CMAKE_CROSSCOMPILING)
   foreach(bootloader ${BOOTLOADERS})
     set(elf ${bootloader}.elf)
     add_executable(${elf} ${BOOTLOADER-SOURCES})
+    add_dependencies(${elf} noise-c)
     target_link_libraries(${elf} PRIVATE c asf4-drivers-min -Wl,-u,exception_table)
     target_include_directories(${elf} PRIVATE ${INCLUDES})
     target_include_directories(${elf} SYSTEM PRIVATE ${SYSTEMINCLUDES})
@@ -416,6 +506,7 @@ if(CMAKE_CROSSCOMPILING)
     target_compile_options(${elf} PRIVATE --specs=nano.specs)
     target_link_libraries(${elf} PRIVATE --specs=nano.specs)
     string(FIND ${bootloader} semihosting SEMIHOSTING_FOUND)
+    target_compile_definitions(${elf} PRIVATE "APP_U2F=0" "APP_BTC=0" "APP_ETH=0" "APP_LTC=0")
     if(SEMIHOSTING_FOUND EQUAL -1)
       target_compile_options(${elf} PRIVATE --specs=nosys.specs)
       target_link_libraries(${elf} PRIVATE --specs=nosys.specs)
@@ -427,11 +518,13 @@ if(CMAKE_CROSSCOMPILING)
   endforeach(bootloader)
 
   foreach(bootloader ${BOOTLOADERS-BITBOX02})
-    target_sources(${bootloader}.elf PRIVATE ${PLATFORM-BITBOX02-SOURCES})
+    target_link_libraries(${bootloader}.elf PRIVATE bitbox02-platform)
+    target_sources(${bootloader}.elf PRIVATE ${BITBOX02-ONLY-SOURCES})
   endforeach(bootloader)
 
   foreach(bootloader ${BOOTLOADERS-BITBOXBASE})
-    target_sources(${bootloader}.elf PRIVATE ${PLATFORM-BITBOXBASE-SOURCES})
+    target_link_libraries(${bootloader}.elf PRIVATE bitboxbase-platform)
+    target_sources(${bootloader}.elf PRIVATE ${BITBOXBASE-ONLY-SOURCES})
   endforeach(bootloader)
 
   target_compile_definitions(bootloader.elf PRIVATE PRODUCT_BITBOX_MULTI)
@@ -455,16 +548,20 @@ if(CMAKE_CROSSCOMPILING)
   target_compile_definitions(bootloader-bitboxbase-production.elf PRIVATE BOOTLOADER_PRODUCTION PRODUCT_BITBOX_BASE)
   set_property(TARGET bootloader-bitboxbase-production.elf PROPERTY EXCLUDE_FROM_ALL ON)
 
-  set(FIRMWARES
+  set(FIRMWARES-BITBOX02
     firmware # Firmware MULTI
     firmware-semihosting # Firmware MULTI with semihosting enabled
     firmware-btc # Firmware BTC-ONLY
+    factory-setup # Factory-setup
+  )
+  set(FIRMWARES-BITBOXBASE
     firmware-bitboxbase # Firmware BASE
     firmware-bitboxbase-semihosting # Firmware BASE with semihosting
-    factory-setup # Factory-setup
     factory-setup-bitboxbase # Factory-setup
   )
+  set(FIRMWARES ${FIRMWARES-BITBOX02} ${FIRMWARES-BITBOXBASE})
   set(FIRMWARES ${FIRMWARES} PARENT_SCOPE)
+
   foreach(firmware ${FIRMWARES})
     set(elf ${firmware}.elf)
     add_executable(${elf} ${FIRMWARE-SOURCES})
@@ -505,7 +602,7 @@ if(CMAKE_CROSSCOMPILING)
     # Select the smaller version of libc called nano.
     target_compile_options(${elf} PRIVATE --specs=nano.specs)
     target_link_libraries(${elf} PRIVATE --specs=nano.specs)
-    string(FIND ${firmware} semihosting SEMIHOSTING_FOUND)
+    string(FIND ${elf} semihosting SEMIHOSTING_FOUND)
     if(SEMIHOSTING_FOUND EQUAL -1)
       target_compile_options(${elf} PRIVATE --specs=nosys.specs)
       target_link_libraries(${elf} PRIVATE --specs=nosys.specs)
@@ -516,38 +613,53 @@ if(CMAKE_CROSSCOMPILING)
     endif()
   endforeach(firmware)
 
+  foreach(firmware ${FIRMWARES-BITBOX02})
+    target_sources(${firmware}.elf PRIVATE ${BITBOX02-FIRMWARE-SOURCES})
+  endforeach(firmware)
+  foreach(firmware ${FIRMWARES-BITBOXBASE})
+    target_sources(${firmware}.elf PRIVATE ${BITBOXBASE-FIRMWARE-SOURCES})
+  endforeach(firmware)
+
   target_sources(firmware.elf PRIVATE firmware.c)
-  target_compile_definitions(firmware.elf PRIVATE PRODUCT_BITBOX_MULTI "APP_BTC=1" "APP_LTC=1" "APP_ETH=1" "APP_U2F=1")
-  target_sources(firmware.elf PRIVATE ${FIRMWARE-U2F-SOURCES} ${PLATFORM-BITBOX02-SOURCES})
+  target_compile_definitions(firmware.elf PRIVATE PRODUCT_BITBOX_MULTI "APP_ETH=1" "APP_U2F=1")
+  target_sources(firmware.elf PRIVATE ${FIRMWARE-U2F-SOURCES})
+  target_link_libraries(firmware.elf PRIVATE bitbox02-platform)
+  target_link_libraries(firmware.elf PRIVATE app_btc-multi)
 
   target_sources(firmware-semihosting.elf PRIVATE firmware.c)
-  target_sources(firmware-semihosting.elf PRIVATE ${FIRMWARE-U2F-SOURCES} ${PLATFORM-BITBOX02-SOURCES})
+  target_sources(firmware-semihosting.elf PRIVATE ${FIRMWARE-U2F-SOURCES})
+  target_link_libraries(firmware-semihosting.elf PRIVATE bitbox02-platform)
+  target_link_libraries(firmware-semihosting.elf PRIVATE app_btc-multi)
+
   # Select an implementation of the system calls that can communicate with the debugger
-  target_compile_definitions(firmware-semihosting.elf PRIVATE PRODUCT_BITBOX_MULTI "APP_BTC=1" "APP_LTC=1" "APP_ETH=1" "APP_U2F=1")
+  target_compile_definitions(firmware-semihosting.elf PRIVATE PRODUCT_BITBOX_MULTI "APP_ETH=1" "APP_U2F=1")
   target_compile_definitions(firmware-semihosting.elf PRIVATE SEMIHOSTING)
 
   target_sources(firmware-btc.elf PRIVATE firmware.c)
-  target_compile_definitions(firmware-btc.elf PRIVATE PRODUCT_BITBOX_BTCONLY "APP_BTC=1" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
-  target_sources(firmware-btc.elf PRIVATE ${PLATFORM-BITBOX02-SOURCES})
+  target_compile_definitions(firmware-btc.elf PRIVATE PRODUCT_BITBOX_BTCONLY "APP_ETH=0" "APP_U2F=0")
+  target_link_libraries(firmware-btc.elf PRIVATE bitbox02-platform)
+  target_link_libraries(firmware-btc.elf PRIVATE app_btc-btc)
 
   target_sources(firmware-bitboxbase.elf PRIVATE bitboxbase/bitboxbase.c)
   target_compile_definitions(firmware-bitboxbase.elf PRIVATE PRODUCT_BITBOX_BASE "APP_BTC=0" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
-  target_sources(firmware-bitboxbase.elf PRIVATE ${PLATFORM-BITBOXBASE-SOURCES} ${BITBOXBASE-FIRMWARE-SOURCES})
+  target_sources(firmware-bitboxbase.elf PRIVATE ${BITBOXBASE-FIRMWARE-SOURCES})
+  target_link_libraries(firmware-bitboxbase.elf PRIVATE bitboxbase-platform)
 
   target_sources(firmware-bitboxbase-semihosting.elf PRIVATE bitboxbase/bitboxbase.c)
   target_compile_definitions(firmware-bitboxbase-semihosting.elf PRIVATE PRODUCT_BITBOX_BASE SEMIHOSTING "APP_BTC=0" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
-  target_sources(firmware-bitboxbase-semihosting.elf PRIVATE ${PLATFORM-BITBOXBASE-SOURCES} ${BITBOXBASE-FIRMWARE-SOURCES})
+  target_sources(firmware-bitboxbase-semihosting.elf PRIVATE ${BITBOXBASE-FIRMWARE-SOURCES})
+  target_link_libraries(firmware-bitboxbase-semihosting.elf PRIVATE bitboxbase-platform)
 
   target_link_libraries(firmware-bitboxbase.elf PRIVATE bitbox02_rust)
   add_dependencies(firmware-bitboxbase.elf rust rust-cbindgen)
 
   target_sources(factory-setup.elf PRIVATE factorysetup.c)
   target_compile_definitions(factory-setup.elf PRIVATE PRODUCT_BITBOX02_FACTORYSETUP "APP_BTC=0" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
-  target_sources(factory-setup.elf PRIVATE ${PLATFORM-BITBOX02-SOURCES})
+  target_link_libraries(factory-setup.elf PRIVATE bitbox02-platform)
 
   target_sources(factory-setup-bitboxbase.elf PRIVATE factorysetup.c)
   target_compile_definitions(factory-setup-bitboxbase.elf PRIVATE PRODUCT_BITBOXBASE_FACTORYSETUP "APP_BTC=0" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
-  target_sources(factory-setup-bitboxbase.elf PRIVATE ${PLATFORM-BITBOXBASE-SOURCES})
+  target_link_libraries(factory-setup-bitboxbase.elf PRIVATE bitboxbase-platform)
 
   foreach(name ${BOOTLOADERS} ${FIRMWARES})
     add_custom_command(

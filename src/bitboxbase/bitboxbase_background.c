@@ -24,6 +24,7 @@
 #include <ui/components/image.h>
 #include <ui/components/label.h>
 #include <ui/components/ui_images.h>
+#include <ui/components/ui_logos.h>
 #include <ui/event.h>
 #include <ui/oled/oled.h>
 #include <ui/screen_stack.h>
