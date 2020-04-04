@@ -120,6 +120,7 @@ ExternalProject_Add(libwally-core
                   ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/configure
                   ${CONFIGURE_FLAGS}
                   ${LIBWALLY_CONFIGURE_FLAGS}
+  COMMAND         find ${CMAKE_CURRENT_BINARY_DIR}/libwally-core -name Makefile | xargs sed -i "s/-O3/-Os/"
   # TODO: Add darwin hack to libwally repo
   BUILD_COMMAND   ${CMAKE_MAKE_PROGRAM}
   INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}

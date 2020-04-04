@@ -26,12 +26,12 @@ RUN echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main" >> /etc/
 # Install gcc8-arm-none-eabi
 RUN mkdir ~/Downloads &&\
     cd ~/Downloads &&\
-    wget -O gcc.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/8-2018q4/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2?revision=d830f9dd-cd4f-406d-8672-cca9210dd220?product=GNU%20Arm%20Embedded%20Toolchain,64-bit,,Linux,8-2018-q4-major &&\
-    echo "fb31fbdfe08406ece43eef5df623c0b2deb8b53e405e2c878300f7a1f303ee52 gcc.tar.bz2" | sha256sum -c &&\
+    wget -O gcc.tar.bz2 https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2 &&\
+    echo "fe0029de4f4ec43cf7008944e34ff8cc gcc.tar.bz2" | md5sum -c &&\
     cd ~/Downloads &&\
     tar -xjvf gcc.tar.bz2 &&\
     rm -f gcc.tar.bz2 &&\
-    cd ~/Downloads && rsync -a gcc-arm-none-eabi-8-2018-q4-major/ /usr/local/
+    cd ~/Downloads && rsync -a gcc-arm-none-eabi-9-2019-q4-major/ /usr/local/
 
 # Install nanopb
 RUN cd ~/Downloads &&\
