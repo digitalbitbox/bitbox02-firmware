@@ -46,7 +46,7 @@ void usart_invalid_endpoint(struct queue* queue, uint32_t cid);
 /**
  * Creates a data frame for sending over USART.
  */
-queue_error_t usart_format_frame(
+void usart_format_frame(
     uint8_t src_endpoint,
     const uint8_t* data,
     uint32_t len,

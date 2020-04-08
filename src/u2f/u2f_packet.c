@@ -103,11 +103,13 @@ void u2f_packet_timeout_enable(uint32_t cid)
     }
 }
 
+#define U2F_TIMEOUT (500) // [msec]
+
 bool u2f_packet_timeout_get(uint32_t* cid)
 {
     for (int i = 0; i < NUM_TIMEOUT_COUNTERS; ++i) {
         *cid = _timeout_counters[i].cid;
-        if (_timeout_counters[i].cid != 0 && _timeout_counters[i].counter >= 5) {
+        if (_timeout_counters[i].cid != 0 && _timeout_counters[i].counter >= (U2F_TIMEOUT / 50)) {
             return true;
         }
     }

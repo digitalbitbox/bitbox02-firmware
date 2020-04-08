@@ -80,6 +80,15 @@ void util_cleanup_64(uint8_t** buf);
  */
 char* util_strdup(const char* str);
 
+/**
+ * Like sprintf, but creates the result buffer with the appropriate size.
+ * Guaranteed to return non-NULL (aborts if allocation fails).
+ *
+ * @param fmt Printf-like format string. 
+ */
+__attribute__ ((format (printf, 1, 2)))
+char* util_asprintf(const char* fmt, ...);
+
 #define UTIL_CLEANUP_20(var)                                                                     \
     uint8_t* __attribute__((__cleanup__(util_cleanup_20))) var##_clean __attribute__((unused)) = \
         var;
@@ -161,5 +170,15 @@ typedef struct {
  * which might return true, false, or "not finished yet".
  */
 typedef enum { ASYNC_OP_TRUE, ASYNC_OP_FALSE, ASYNC_OP_NOT_READY } async_op_result_t;
+
+/**
+ * Allocate memory. Abort
+ * if malloc fails.
+ *
+ * @param[in] size Number of bytes to allocate. Gets passed to malloc(2).
+ * @return Allocated pointer. Guaranteed to be non-NULL.
+ */
+__attribute__((malloc))
+void* util_malloc(size_t size);
 
 #endif

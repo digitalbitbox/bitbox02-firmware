@@ -143,6 +143,15 @@ set_property(TARGET secp256k1
 set_target_properties(secp256k1 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
 set_target_properties(secp256k1 PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
 
+add_library(tinycbor STATIC
+	tinycbor/src/cborerrorstrings.c
+	tinycbor/src/cborencoder.c
+	tinycbor/src/cborencoder_close_container_checked.c
+	tinycbor/src/cborparser.c
+	tinycbor/src/cborpretty.c
+)
+set_target_properties(tinycbor PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/tinycbor/src)
+set_target_properties(tinycbor PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/tinycbor/src)
 
 if(CMAKE_CROSSCOMPILING)
   # Cortex Microcontroller Software Interface Standard

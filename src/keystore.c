@@ -94,7 +94,7 @@ bool keystore_copy_seed(uint8_t* seed_out, uint32_t* length_out)
 }
 
 /**
- * @return the pointer ot the static bip39 seed on success. returns NULL if the
+ * @return the pointer to the static bip39 seed on success. returns NULL if the
  * keystore is locked.
  */
 static uint8_t* _get_bip39_seed(void)

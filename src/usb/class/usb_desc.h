@@ -18,6 +18,15 @@
 #include <bootloader/bootloader_version.h>
 #include <version.h>
 #ifndef TESTING
+
+/*
+ * The USB stack will define its own version of assert...
+ * With the same name.
+ */
+#ifdef assert
+#undef assert
+#endif
+
 #include "usb_protocol.h"
 #include "usb_protocol_hid.h"
 #endif

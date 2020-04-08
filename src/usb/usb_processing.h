@@ -36,7 +36,7 @@ void usb_processing_register_cmds(
  * Prepares USB frames to be send to the host.
  * param[in] data The data is copied into one or more frames
  */
-typedef queue_error_t (*usb_frame_formatter_t)(
+typedef void (*usb_frame_formatter_t)(
     const uint8_t cmd,
     const uint8_t* data,
     const uint32_t len,
@@ -60,10 +60,18 @@ void usb_processing_process(struct usb_processing* ctx);
 
 void usb_processing_set_send(struct usb_processing* ctx, void (*send)(void));
 
+void usb_processing_send_packet(struct usb_processing* ctx, const Packet* out_packet);
+
 struct usb_processing* usb_processing_u2f(void);
 struct usb_processing* usb_processing_hww(void);
 
 void usb_processing_init(void);
+
+/**
+ * Initializes a packet as a response to the given incoming
+ * packet.
+ */
+void prepare_usb_packet(uint8_t cmd, uint32_t cid, Packet* out_packet);
 
 #if !defined(BOOTLOADER)
 void usb_processing_lock(struct usb_processing* ctx);

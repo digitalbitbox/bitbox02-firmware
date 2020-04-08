@@ -132,9 +132,9 @@ static usb_processing_state_t _usb_state = {0};
  * Responds with data of a certain length.
  * @param[in] packet The packet to be sent.
  */
-static queue_error_t _enqueue_frames(struct usb_processing* ctx, const Packet* out_packet)
+void usb_processing_send_packet(struct usb_processing* ctx, const Packet* out_packet)
 {
-    return ctx->format_frame(
+    ctx->format_frame(
         out_packet->cmd, out_packet->data_addr, out_packet->len, out_packet->cid, ctx->out_queue());
 }
 
@@ -153,12 +153,12 @@ static void _build_packet(const uint8_t* buf, size_t length, uint8_t cmd, uint32
 /**
  * Prepares an outgoing packet.
  */
-static void _prepare_out_packet(const Packet* in_packet, Packet* out_packet)
+void prepare_usb_packet(uint8_t cmd, uint32_t cid, Packet* out_packet)
 {
     memset(out_packet->data_addr, 0, sizeof(out_packet->data_addr));
     out_packet->len = 0;
-    out_packet->cmd = in_packet->cmd;
-    out_packet->cid = in_packet->cid;
+    out_packet->cmd = cmd;
+    out_packet->cid = cid;
 }
 
 /**
@@ -245,11 +245,7 @@ static void _usb_execute_packet(struct usb_processing* ctx, const Packet* in_pac
         if (in_packet->cmd == ctx->registered_cmds[i].cmd) {
             cmd_valid = true;
             // process_cmd calls commander(...) or U2F functions.
-
-            Packet out_packet;
-            _prepare_out_packet(in_packet, &out_packet);
-            ctx->registered_cmds[i].process_cmd(in_packet, &out_packet, USB_DATA_MAX_LEN);
-            _enqueue_frames(ctx, (const Packet*)&out_packet);
+            ctx->registered_cmds[i].process_cmd(in_packet);
             break;
         }
     }
@@ -286,10 +282,11 @@ static void _usb_arbitrate_packet(struct usb_processing* ctx, const Packet* in_p
 
     if (!can_go_through) {
         /* The receiving state should send back an error */
-        Packet out_packet;
-        _prepare_out_packet(in_packet, &out_packet);
-        ctx->create_blocked_req_error(&out_packet, in_packet);
-        _enqueue_frames(ctx, &out_packet);
+        Packet* out_packet = util_malloc(sizeof(*out_packet));
+        prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+        ctx->create_blocked_req_error(out_packet, in_packet);
+        usb_processing_send_packet(ctx, out_packet);
+        free(out_packet);
     } else {
         _usb_execute_packet(ctx, in_packet);
         /* New packet processed: reset the watchdog timeout. */

@@ -843,10 +843,14 @@ static size_t _api_command(const uint8_t* input, uint8_t* output, const size_t m
     return len;
 }
 
-static void _api_msg(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _api_msg(const Packet* in_packet)
 {
-    size_t len = _api_command(in_packet->data_addr, out_packet->data_addr, max_out_len);
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+    size_t len = _api_command(in_packet->data_addr, out_packet->data_addr, USB_DATA_MAX_LEN);
     out_packet->len = len;
+    usb_processing_send_packet(usb_processing_hww(), out_packet);
+    free(out_packet);
 }
 
 static void _api_setup(void)

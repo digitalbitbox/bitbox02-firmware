@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "common_main.h"
+#include "fido2/ctap.h"
 #include "driver_init.h"
 #include "flags.h"
 #include "hardfault.h"
@@ -84,4 +85,5 @@ void common_main(void)
     if (!securechip_setup(&_securechip_interface_functions)) {
         Abort("securechip_setup failed");
     }
+    //ctap_init();
 }

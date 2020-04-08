@@ -29,7 +29,11 @@
 
 uint32_t __stack_chk_guard = 0;
 
-static void _cancel(void) {}
+static void _cancel(void* param)
+{
+    (void)param;
+}
+
 
 int main(void)
 {
@@ -39,7 +43,7 @@ int main(void)
 
     const char* words[] = {"one", "two", "three", "four", "five", "six", "seven"};
     component_t* test_scroll_through_all_variants =
-        scroll_through_all_variants_create(words, NULL, 7, NULL, NULL, _cancel, NULL);
+        scroll_through_all_variants_create(words, NULL, NULL, 7, NULL, NULL, _cancel, NULL, NULL);
 
     ui_screen_stack_push(test_scroll_through_all_variants);
     firmware_main_loop();

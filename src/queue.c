@@ -127,6 +127,14 @@ queue_error_t queue_push(struct queue* ctx, const uint8_t* data)
     return result;
 }
 
+void queue_push_retry(struct queue* ctx, const uint8_t* data)
+{
+    queue_error_t result = QUEUE_ERR_FULL;
+    while (result != QUEUE_ERR_NONE) {
+        result = queue_push(ctx, data);
+    }
+}
+
 /**
  * Thread-unsafe version of queue_peek.
  */

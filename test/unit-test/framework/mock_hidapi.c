@@ -52,7 +52,7 @@ void* timer_task(void* args)
     for (;;) {
         // printf("tick\n");
         u2f_packet_timeout_tick();
-        _delay(90);
+        _delay(40);
         pthread_mutex_lock(&mutex);
         if (timer_thread_stop) {
             pthread_mutex_unlock(&mutex);

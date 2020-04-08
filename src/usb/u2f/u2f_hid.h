@@ -27,15 +27,18 @@
 #define U2FHID_TRANS_TIMEOUT 3000 // Default message timeout in ms
 
 // U2FHID native commands
-#define U2FHID_PING (U2FHID_TYPE_INIT | 0x01) // Echo data
-#define U2FHID_MSG (U2FHID_TYPE_INIT | 0x03) // Send U2F message frame
-#define U2FHID_LOCK (U2FHID_TYPE_INIT | 0x04) // Send lock channel command
-#define U2FHID_INIT (U2FHID_TYPE_INIT | 0x06) // Channel initialization
-#define U2FHID_WINK (U2FHID_TYPE_INIT | 0x08) // Send device identification wink
-#define U2FHID_SYNC (U2FHID_TYPE_INIT | 0x3c) // Send sync command
-#define U2FHID_ERROR (U2FHID_TYPE_INIT | 0x3f) // Error response
+#define U2FHID_PING         (U2FHID_TYPE_INIT | 0x01) // Echo data
+#define U2FHID_MSG          (U2FHID_TYPE_INIT | 0x03) // Send U2F message frame
+#define U2FHID_LOCK         (U2FHID_TYPE_INIT | 0x04) // Send lock channel command
+#define U2FHID_INIT         (U2FHID_TYPE_INIT | 0x06) // Channel initialization
+#define U2FHID_WINK         (U2FHID_TYPE_INIT | 0x08) // Send device identification wink
+#define U2FHID_CBOR         (U2FHID_TYPE_INIT | 0x10)
+#define U2FHID_CANCEL       (U2FHID_TYPE_INIT | 0x11)
+#define U2FHID_KEEPALIVE    (U2FHID_TYPE_INIT | 0x3b)
+#define U2FHID_SYNC         (U2FHID_TYPE_INIT | 0x3c) // Send sync command
+#define U2FHID_ERROR        (U2FHID_TYPE_INIT | 0x3f) // Error response
 #define U2FHID_VENDOR_FIRST (U2FHID_TYPE_INIT | 0x40) // First vendor defined command
-#define U2FHID_VENDOR_LAST (U2FHID_TYPE_INIT | 0x7f) // Last vendor defined command
+#define U2FHID_VENDOR_LAST  (U2FHID_TYPE_INIT | 0x7f) // Last vendor defined command
 
 // U2FHID vendor defined commands
 #define U2FHID_HWW (U2FHID_VENDOR_FIRST + 0x01) // Hardware wallet command
@@ -44,6 +47,7 @@
 #define U2FHID_INIT_NONCE_SIZE 8
 #define U2FHID_CAPFLAG_WINK 0x01 // Device supports WINK command
 #define U2FHID_CAPFLAG_LOCK 0x02 // Device supports LOCK command
+#define U2FHID_CAPFLAG_CBOR 0x04 // Device supports CBOR (FIDO2) commands
 
 // Error codes; return as negatives
 #define U2FHID_ERR_NONE 0x00

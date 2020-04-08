@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "u2f.h"
-#include "u2f/u2f_app.h"
 
 #include <stdio.h>
 #include <string.h>
 
+#include <fido2/ctap.h>
+#include <fido2/ctap_errors.h>
+#include <fido2/device.h>
 #include <hardfault.h>
 #include <keystore.h>
 #include <memory/memory.h>
 #include <random.h>
+#include <screen.h>
 #include <securechip/securechip.h>
 #include <ui/component.h>
 #include <ui/components/confirm.h>
@@ -28,11 +31,14 @@
 #include <ui/screen_process.h>
 #include <ui/screen_stack.h>
 #include <ui/workflow_stack.h>
+#include <u2f/u2f_app.h>
+#include <u2f/u2f_keyhandle.h>
 #include <usb/u2f/u2f.h>
 #include <usb/u2f/u2f_hid.h>
 #include <usb/u2f/u2f_keys.h>
 #include <usb/usb_packet.h>
 #include <usb/usb_processing.h>
+#include <util.h>
 #include <wally_crypto.h>
 #include <workflow/status.h>
 #include <workflow/unlock.h>
@@ -77,6 +83,14 @@ typedef struct {
      */
     uint8_t last_cmd;
     /**
+     * last_cmd points to a valid byte,
+     * and incoming requests that match that
+     * command should be allowed. This is true
+     * for blocking U2F requests, but false for CTAP
+     * requests (as CTAP requests are not sent multiple times).
+     */
+    bool allow_cmd_retries;
+    /**
      * Keeps track of whether there is an outstanding
      * U2F operation going on in the background.
      * This is not strictly necessary, but it's useful
@@ -107,6 +121,21 @@ typedef struct {
      * Will drop the refresh_webpage() screen after a few ticks.
      */
     uint16_t refresh_webpage_timeout;
+    /**
+     * If a CTAP operation is pending, it needs to be polled
+     * in the background.
+     */
+    bool ctap_op_pending;
+    /**
+     * This value is incremented by a timer every 20ms.
+     * It is used to periodically send CTAP keepalives to the host.
+     */
+    uint16_t ctap_keepalive_timer;
+    /**
+     * If a CTAP operation is pending, this pointer will point to
+     * a pre-allocated packet, prepared with the proper header.
+     */
+    Packet* ctap_pending_response;
 } u2f_state_t;
 
 static u2f_state_t _state = {0};
@@ -173,7 +202,12 @@ static void _lock(const USB_APDU* apdu)
 {
     usb_processing_lock(usb_processing_u2f());
     _state.locked = true;
-    _state.last_cmd = apdu->ins;
+    if (apdu) {
+        _state.last_cmd = apdu->ins;
+        _state.allow_cmd_retries = true;
+    } else {
+        _state.allow_cmd_retries = false;
+    }
 }
 
 static component_t* _nudge_label = NULL;
@@ -286,46 +320,6 @@ static void _version(const USB_APDU* a, Packet* out_packet)
 
     static const uint8_t version_response[] = {'U', '2', 'F', '_', 'V', '2', 0x90, 0x00};
     _fill_message(version_response, sizeof(version_response), out_packet);
-}
-
-/**
- * Generates a key for the given app id, salted with the passed nonce.
- * @param[in] appId The app id of the RP which requests a registration or authentication process.
- * @param[in] nonce A random nonce with which the seed for the private key is salted.
- * @param[out] privkey The generated private key. Size must be HMAC_SHA256_LEN.
- * @param[out] mac The message authentication code for the private key. Size must be
- * HMAC_SHA256_LEN.
- */
-USE_RESULT static bool _keyhandle_gen(
-    const uint8_t* appId,
-    uint8_t* nonce,
-    uint8_t* privkey,
-    uint8_t* mac)
-{
-    uint8_t hmac_in[U2F_APPID_SIZE + U2F_NONCE_LENGTH];
-    uint8_t seed[32];
-    UTIL_CLEANUP_32(seed);
-    if (!keystore_get_u2f_seed(seed)) {
-        return false;
-    }
-
-    // Concatenate AppId and Nonce as input for the first HMAC round
-    memcpy(hmac_in, appId, U2F_APPID_SIZE);
-    memcpy(hmac_in + U2F_APPID_SIZE, nonce, U2F_NONCE_LENGTH);
-    int res = wally_hmac_sha256(
-        seed, KEYSTORE_U2F_SEED_LENGTH, hmac_in, sizeof(hmac_in), privkey, HMAC_SHA256_LEN);
-    if (res != WALLY_OK) {
-        return false;
-    }
-
-    // Concatenate AppId and privkey for the second HMAC round
-    memcpy(hmac_in + U2F_APPID_SIZE, privkey, HMAC_SHA256_LEN);
-    res = wally_hmac_sha256(
-        seed, KEYSTORE_U2F_SEED_LENGTH, hmac_in, sizeof(hmac_in), mac, HMAC_SHA256_LEN);
-    if (res != WALLY_OK) {
-        return false;
-    }
-    return true;
 }
 
 static int _sig_to_der(const uint8_t* sig, uint8_t* der)
@@ -491,19 +485,10 @@ static void _register_continue(const USB_APDU* apdu, Packet* out_packet)
     }
 
     // Generate keys until a valid one is found
-    int i = 0;
-    for (;; ++i) {
-        if (i == 10) {
-            _error(U2F_SW_CONDITIONS_NOT_SATISFIED, out_packet);
-            return;
-        }
-        random_32_bytes(nonce);
-        if (!_keyhandle_gen(reg_request->appId, nonce, privkey, mac)) {
-            continue;
-        }
-        if (securechip_ecc_generate_public_key(privkey, (uint8_t*)&response->pubKey.x)) {
-            break;
-        }
+    bool key_create_success = u2f_keyhandle_create_key(reg_request->appId, nonce, privkey, mac, (uint8_t*)&response->pubKey.x);
+    if (!key_create_success) {
+        _error(U2F_SW_CONDITIONS_NOT_SATISFIED, out_packet);
+        return;
     }
 
     response->pubKey.format = U2F_UNCOMPRESSED_POINT;
@@ -513,7 +498,7 @@ static void _register_continue(const USB_APDU* apdu, Packet* out_packet)
 
     memcpy(response->keyHandleCertSig, mac, sizeof(mac));
     memcpy(response->keyHandleCertSig + sizeof(mac), nonce, sizeof(nonce));
-    memcpy(response->keyHandleCertSig + response->keyHandleLen, U2F_ATT_CERT, sizeof(U2F_ATT_CERT));
+    memcpy(response->keyHandleCertSig + response->keyHandleLen, U2F_ATT_CERT, U2F_ATT_CERT_SIZE);
 
     // Add signature using attestation key
     sig_base.reserved = 0;
@@ -530,9 +515,9 @@ static void _register_continue(const USB_APDU* apdu, Packet* out_packet)
         return;
     }
 
-    uint8_t* resp_sig = response->keyHandleCertSig + response->keyHandleLen + sizeof(U2F_ATT_CERT);
+    uint8_t* resp_sig = response->keyHandleCertSig + response->keyHandleLen + U2F_ATT_CERT_SIZE;
     int der_len = _sig_to_der(sig, resp_sig);
-    size_t kh_cert_sig_len = response->keyHandleLen + sizeof(U2F_ATT_CERT) + der_len;
+    size_t kh_cert_sig_len = response->keyHandleLen + U2F_ATT_CERT_SIZE + der_len;
 
     // Append success bytes
     memcpy(response->keyHandleCertSig + kh_cert_sig_len, "\x90\x00", 2);
@@ -565,12 +550,13 @@ static uint16_t _authenticate_sanity_check_req(const USB_APDU* apdu)
 
 static uint16_t _authenticate_verify_key_valid(const USB_APDU* apdu)
 {
-    uint8_t nonce[U2F_NONCE_LENGTH];
-    uint8_t mac[HMAC_SHA256_LEN];
+    uint8_t nonce[U2F_NONCE_LENGTH] = {0};
+    uint8_t mac[HMAC_SHA256_LEN] = {0};
     uint8_t privkey[U2F_EC_KEY_SIZE];
+    UTIL_CLEANUP_32(privkey);
     const U2F_AUTHENTICATE_REQ* auth_request = (const U2F_AUTHENTICATE_REQ*)apdu->data;
     memcpy(nonce, auth_request->keyHandle + sizeof(mac), sizeof(nonce));
-    if (!_keyhandle_gen(auth_request->appId, nonce, privkey, mac)) {
+    if (!u2f_keyhandle_gen(auth_request->appId, nonce, privkey, mac)) {
         return U2F_SW_WRONG_DATA;
     }
     if (!MEMEQ(auth_request->keyHandle, mac, SHA256_LEN)) {
@@ -638,8 +624,6 @@ static void _authenticate_wait_refresh(const USB_APDU* apdu, Packet* out_packet)
 static void _authenticate_continue(const USB_APDU* apdu, Packet* out_packet)
 {
     uint8_t privkey[U2F_EC_KEY_SIZE];
-    uint8_t nonce[U2F_NONCE_LENGTH];
-    uint8_t mac[HMAC_SHA256_LEN];
     uint8_t sig[64] = {0};
     U2F_AUTHENTICATE_SIG_STR sig_base;
     uint16_t req_error = _authenticate_sanity_check_req(apdu);
@@ -664,12 +648,10 @@ static void _authenticate_continue(const USB_APDU* apdu, Packet* out_packet)
         return;
     }
 
-    memcpy(nonce, auth_request->keyHandle + sizeof(mac), sizeof(nonce));
-    if (!_keyhandle_gen(auth_request->appId, nonce, privkey, mac)) {
-        _error(U2F_SW_WRONG_DATA, out_packet);
-        return;
-    }
-    if (!MEMEQ(auth_request->keyHandle, mac, SHA256_LEN)) {
+    /* Decode the key handle into a private key. */
+    bool key_is_valid = u2f_keyhandle_verify(
+        auth_request->appId, auth_request->keyHandle, auth_request->keyHandleLength, privkey);
+    if (!key_is_valid) {
         _error(U2F_SW_WRONG_DATA, out_packet);
         return;
     }
@@ -722,13 +704,16 @@ static void _authenticate_continue(const USB_APDU* apdu, Packet* out_packet)
     _fill_message(buf, auth_packet_len + 2, out_packet);
 }
 
-static void _cmd_ping(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _cmd_ping(const Packet* in_packet)
 {
-    (void)max_out_len;
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
 
     // 0 and broadcast are reserved
     if (in_packet->cid == U2FHID_CID_BROADCAST || in_packet->cid == 0) {
         _error_hid(in_packet->cid, U2FHID_ERR_INVALID_CID, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
@@ -738,20 +723,27 @@ static void _cmd_ping(const Packet* in_packet, Packet* out_packet, const size_t 
     out_packet->len = in_packet->len;
     out_packet->cmd = U2FHID_PING;
     out_packet->cid = in_packet->cid;
+    usb_processing_send_packet(usb_processing_u2f(), out_packet);
+    free(out_packet);
 }
 
-static void _cmd_wink(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _cmd_wink(const Packet* in_packet)
 {
-    (void)max_out_len;
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
 
     // 0 and broadcast are reserved
     if (in_packet->cid == U2FHID_CID_BROADCAST || in_packet->cid == 0) {
         _error_hid(in_packet->cid, U2FHID_ERR_INVALID_CID, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
     if (in_packet->len > 0) {
         _error_hid(in_packet->cid, U2FHID_ERR_INVALID_LEN, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
@@ -759,6 +751,32 @@ static void _cmd_wink(const Packet* in_packet, Packet* out_packet, const size_t 
     out_packet->len = 0;
     out_packet->cmd = U2FHID_WINK;
     out_packet->cid = in_packet->cid;
+    usb_processing_send_packet(usb_processing_u2f(), out_packet);
+    free(out_packet);
+}
+
+static void _cmd_cancel(const Packet* in_packet)
+{
+    (void)in_packet;
+    //screen_print_debug("CANCEL", 500);
+    /*
+     * U2FHID_CANCEL messages should abort the current transaction,
+     * but no response should be given.
+     */
+}
+
+static void _cmd_keepalive(const Packet* in_packet)
+{
+    Packet out_packet;
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, &out_packet);
+
+    screen_print_debug("KEEPALIVE!!", 500);
+    util_zero(out_packet.data_addr, sizeof(out_packet.data_addr));
+    out_packet.len = 1;
+    out_packet.cmd = U2FHID_KEEPALIVE;
+    out_packet.cid = in_packet->cid;
+    out_packet.data_addr[0] = CTAPHID_STATUS_UPNEEDED;
+    usb_processing_send_packet(usb_processing_u2f(), &out_packet);
 }
 
 /**
@@ -768,16 +786,23 @@ static void _cmd_wink(const Packet* in_packet, Packet* out_packet, const size_t 
  * If the CID is the U2FHID_CID_BROADCAST then the application is requesting a CID from the device.
  * Otherwise the application has chosen the CID.
  */
-static void _cmd_init(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _cmd_init(const Packet* in_packet)
 {
-    if (U2FHID_INIT_RESP_SIZE >= max_out_len) {
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+
+    if (U2FHID_INIT_RESP_SIZE >= USB_DATA_MAX_LEN) {
         _error_hid(in_packet->cid, U2FHID_ERR_OTHER, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
     // Channel 0 is reserved
     if (in_packet->cid == 0) {
         _error_hid(in_packet->cid, U2FHID_ERR_INVALID_CID, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
@@ -795,9 +820,11 @@ static void _cmd_init(const Packet* in_packet, Packet* out_packet, const size_t 
     response.versionMajor = DIGITAL_BITBOX_VERSION_MAJOR;
     response.versionMinor = DIGITAL_BITBOX_VERSION_MINOR;
     response.versionBuild = DIGITAL_BITBOX_VERSION_PATCH;
-    response.capFlags = U2FHID_CAPFLAG_WINK;
+    response.capFlags = U2FHID_CAPFLAG_WINK | U2FHID_CAPFLAG_CBOR;
     util_zero(out_packet->data_addr, sizeof(out_packet->data_addr));
     memcpy(out_packet->data_addr, &response, sizeof(response));
+    usb_processing_send_packet(usb_processing_u2f(), out_packet);
+    free(out_packet);
 }
 
 /**
@@ -911,9 +938,8 @@ static void _abort_authenticate(void)
 /**
  * Process a U2F message
  */
-static void _cmd_msg(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _cmd_msg(const Packet* in_packet)
 {
-    (void)max_out_len;
     // By default always use the recieved cid
     _state.cid = in_packet->cid;
 
@@ -923,8 +949,13 @@ static void _cmd_msg(const Packet* in_packet, Packet* out_packet, const size_t m
         return;
     }
 
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+
     if (apdu->cla != 0) {
         _error(U2F_SW_CLA_NOT_SUPPORTED, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
 
@@ -940,14 +971,75 @@ static void _cmd_msg(const Packet* in_packet, Packet* out_packet, const size_t m
         break;
     default:
         _error(U2F_SW_INS_NOT_SUPPORTED, out_packet);
+    }
+    usb_processing_send_packet(usb_processing_u2f(), out_packet);
+    free(out_packet);
+}
+
+static void _cmd_cbor(const Packet* in_packet) {
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+
+    if (in_packet->len == 0)
+    {
+        printf("Error,invalid 0 length field for cbor packet\n");
+        _error_hid(in_packet->cid, U2FHID_ERR_INVALID_LEN, out_packet);
+        usb_processing_send_packet(usb_processing_u2f(), out_packet);
+        free(out_packet);
         return;
     }
+    in_buffer_t request_buf = {
+        .data = in_packet->data_addr,
+        .len = in_packet->len
+    };
+    buffer_t response_buf = {
+        .data = out_packet->data_addr + 1,
+        .len = 0,
+        .max_len = USB_DATA_MAX_LEN - 1
+    };
+    ctap_request_result_t result = ctap_request(&request_buf, &response_buf);
+    if (!result.request_completed) {
+        /* Don't send a response yet. */
+        _state.ctap_keepalive_timer = 0;
+        _state.ctap_op_pending = true;
+        _state.ctap_pending_response = malloc(sizeof(*_state.ctap_pending_response));
+        if (!_state.ctap_pending_response) {
+            /* Failed to allocate a big buffer - so we should be able to recover. */
+            _state.ctap_op_pending = false;
+            _unlock();
+            _error_hid(in_packet->cid, CTAP1_ERR_OTHER, out_packet);
+            usb_processing_send_packet(usb_processing_u2f(), out_packet);
+            return;
+        }
+        /* Save the output packet for later use. */
+        memcpy(_state.ctap_pending_response, out_packet, sizeof(*out_packet));
+        free(out_packet);
+        return;
+    }
+    if (result.status != CTAP1_ERR_SUCCESS) {
+        _error_hid(in_packet->cid, result.status, out_packet);
+    } else {
+        out_packet->data_addr[0] = result.status;
+    }
+    out_packet->len = response_buf.len + 1;
+    usb_processing_send_packet(usb_processing_u2f(), out_packet);
+    free(out_packet);
 }
 
 bool u2f_blocking_request_can_go_through(const Packet* in_packet)
 {
     if (!_state.locked) {
         Abort("USB stack thinks we're busy, but we're not.");
+    }
+
+    /* U2F keepalives should always be let through */
+    if (in_packet->cmd == U2FHID_KEEPALIVE || in_packet->cmd == U2FHID_CANCEL) {
+        return true;
+    }
+
+    if (!_state.allow_cmd_retries) {
+        /* We're blocking every command, including retries of the last command. */
+        return false;
     }
     /*
      * Check if this request is the same one we're currently operating on.
@@ -1036,22 +1128,57 @@ static void _process_authenticate(void)
     }
 }
 
+#define CTAP_KEEPALIVE_PERIOD (1)
+
 void u2f_process(void)
 {
     if (!_state.locked) {
         return;
     }
-    switch (_state.last_cmd) {
-    case U2F_REGISTER:
-        _process_register();
-        break;
-    case U2F_AUTHENTICATE:
-        _process_authenticate();
-        break;
-    default:
-        Abort("Bad U2F process state.");
+    if (_state.ctap_op_pending) {
+        if (!_state.ctap_pending_response) {
+            Abort("NULL pending response buffer in u2f_process.\n");
+        }
+        buffer_t out_buf = {
+            .data = _state.ctap_pending_response->data_addr + 1,
+            .len = 0,
+            .max_len = USB_DATA_MAX_LEN - 1
+        };
+        ctap_request_result_t result = ctap_retry(&out_buf);
+        if (!result.request_completed) {
+            if (_state.ctap_keepalive_timer >= CTAP_KEEPALIVE_PERIOD) {
+                _state.ctap_keepalive_timer = 0;
+                _state.ctap_pending_response->len = 1;
+                _state.ctap_pending_response->cmd = U2FHID_KEEPALIVE;
+                _state.ctap_pending_response->data_addr[0] = CTAPHID_STATUS_UPNEEDED;
+                usb_processing_send_packet(usb_processing_u2f(), _state.ctap_pending_response);
+            }
+        } else {
+            /*
+            * The CTAP operation has finished!
+            */
+            _unlock();
+            _state.ctap_op_pending = false;
+        }
+    } else {
+        switch (_state.last_cmd) {
+        case U2F_REGISTER:
+            _process_register();
+            break;
+        case U2F_AUTHENTICATE:
+            _process_authenticate();
+            break;
+        default:
+            Abort("Bad U2F process state.");
+        }
     }
 }
+
+void u2f_timer(void)
+{
+    _state.ctap_keepalive_timer++;
+}
+
 
 /**
  * Set up the U2F commands.
@@ -1063,6 +1190,9 @@ void u2f_device_setup(void)
         {U2FHID_WINK, _cmd_wink},
         {U2FHID_INIT, _cmd_init},
         {U2FHID_MSG, _cmd_msg},
+        {U2FHID_CBOR, _cmd_cbor},
+        {U2FHID_CANCEL, _cmd_cancel},
+        {U2FHID_KEEPALIVE, _cmd_keepalive},
     };
     usb_processing_register_cmds(
         usb_processing_u2f(), u2f_cmd_callbacks, sizeof(u2f_cmd_callbacks) / sizeof(CMD_Callback));

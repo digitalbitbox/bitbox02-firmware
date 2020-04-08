@@ -36,7 +36,7 @@ typedef struct {
  */
 typedef struct {
     uint8_t cmd;
-    void (*process_cmd)(const Packet*, Packet*, const size_t);
+    void (*process_cmd)(const Packet*);
 } CMD_Callback;
 
 /**

@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+
+import asn1
+import base64
+import os
+import subprocess
+import sys
+import tempfile
+
+def get_root_cert(base_dir):
+    return os.path.join(base_dir, 'root_cert.pem')
+
+def get_final_cert(base_dir):
+    return os.path.join(base_dir, 'cert.der')
+
+def get_root_privkey(base_dir):
+    return os.path.join(base_dir, 'root_privkey.pem')
+
+def get_final_privkey(base_dir):
+    return os.path.join(base_dir, 'privkey.pem')
+
+def run_ssl_command(cmd):
+    print("Running: {}".format(cmd))
+    p = subprocess.Popen(cmd, stdout=sys.stdout, stdin=sys.stdin, stderr=sys.stderr)
+    p.communicate()
+
+def generate_privkey(privkey_filename):
+    openssl_command = ['openssl', 'ecparam', '-name', 'secp256r1', '-genkey', '-out', privkey_filename]
+    run_ssl_command(openssl_command)
+
+def parse_privkey(privkey_filename):
+    p = subprocess.Popen(['openssl', 'ec', '-in', privkey_filename, '-text', '-noout'], stdin=None, stdout=subprocess.PIPE, stderr=sys.stderr)
+    privkey_out, _ = p.communicate()
+    privkey_out = privkey_out.decode().splitlines()
+    print("PVO:\n{}".format(privkey_out))
+    privkey_lines = []
+    in_privkey = False
+    for line in privkey_out:
+        if line[0].isspace():
+            if in_privkey:
+                privkey_lines.append(line)
+        elif line.strip().startswith('priv:'):
+            in_privkey = True
+        else:
+            in_privkey = False
+    privkey_data = bytes([int(b, 16) for b in ''.join([l.strip() for l in privkey_lines]).split(':')])
+
+    assert len(privkey_data) == 32, "Wrong data generated for private key ({}).".format(len(privkey_data))
+    return privkey_data
+
+def generate_root_cert(base_dir):
+    print("**** Creating root certificate ****")
+    cert_filename = get_root_cert(base_dir)
+    privkey_filename = get_root_privkey(base_dir)
+    openssl_command = ['openssl', 'req', '-new', '-x509', '-key', privkey_filename, '-outform', 'PEM', '-out', cert_filename, '-days', '10000',
+                       '-subj', '/C=CH/ST=Zurich/L=Adliswil/O=Shift Cryptosecurity AG/CN=Shift Cryptosecurity/emailAddress=support@shiftcrypto.ch'
+                        ]
+    run_ssl_command(openssl_command)
+
+def generate_cert_file(base_dir):
+    # We need an extension file in order to specify additional flags; this
+    # will result in a version 3 certificate as required by FIDO2.
+    ext_file = os.path.join(base_dir, 'v3.ext')
+    with open(ext_file, 'w') as f:
+        f.write("authorityKeyIdentifier=keyid,issuer\nbasicConstraints=CA:FALSE\nkeyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment")
+
+    print("**** Creating final certificate ****")
+    cert_filename = get_final_cert(base_dir)
+    csr_filename = os.path.join(base_dir, 'final_csr.csr')
+    run_ssl_command(['openssl', 'req', '-new', '-key', get_final_privkey(base_dir), '-out', csr_filename,
+                       '-subj', '/C=CH/ST=Zurich/L=Adliswil/O=Shift Cryptosecurity AG/OU=Authenticator Attestation/CN=Shift Cryptosecurity/emailAddress=support@shiftcrypto.ch'
+    ])
+    print("**** Signing final certificate ****")
+    openssl_command = ['openssl', 'x509', '-req', '-in', csr_filename, '-extfile', ext_file, '-CA', get_root_cert(base_dir), '-CAkey', get_root_privkey(base_dir), '-CAcreateserial', '-outform', 'DER', '-out', cert_filename, '-days', '10000'
+                       ]
+    run_ssl_command(openssl_command)
+    with open(cert_filename, 'rb') as cert:
+        cert_data = cert.read()
+    return cert_data
+
+
+def dump_bytearray_to_file(f, name, data):
+    f.write('const uint8_t {}[] = {{'.format(name))
+    items_per_line = 10
+    line_separator = ',\n        '
+# * f.write(', '.join(['0x{:02x}'.format(b) for b in test2cert]))
+    split_data = [data[x:x+10] for x in range(0, len(data), items_per_line)]
+    split_lines = [', '.join(['0x{:02x}'.format(b) for b in line]) for line in split_data]
+    f.write('\n        ')
+    f.write(line_separator.join(split_lines))
+    f.write('\n    }};\n'.format(line_separator))
+
+
+def generate_fido2_cert_source(cert_data, privkey):
+    with open('fido2.c', 'w') as f:
+        f.write('#include "fido2_keys.h"\n\n')
+        f.write('/**\n')
+        f.write(' * Automatically generated with the following command:\n')
+        f.write(' * {}\n'.format(sys.argv))
+        f.write(' */\n')
+        f.write('\n')
+        dump_bytearray_to_file(f, 'FIDO2_ATT_PRIV_KEY', privkey)
+        f.write('\n')
+        dump_bytearray_to_file(f, 'FIDO2_ATT_CERT', cert_data)
+        f.write('const size_t FIDO2_ATT_CERT_SIZE = sizeof(FIDO2_ATT_CERT);\n')
+
+def parse_private_key_from_pem(privkey_data):
+    privkey_lines = privkey_data.decode().splitlines()
+    started = False
+    base64_lines = []
+    for line in privkey_lines:
+        if 'BEGIN EC PRIVATE KEY' in line:
+            started = True
+        elif 'END EC PRIVATE KEY' in line:
+            break
+        elif started:
+            base64_lines.append(line.strip())
+    base64_data = ''.join(base64_lines)
+    print("Base64-encoded privkey data: {}".format(base64_data))
+    privkey_binary = base64.b64decode(base64_data)
+    decoder = asn1.Decoder()
+    decoder.start(privkey_binary)
+    tag, value = decoder.read()
+    print('{}, {}'.format(tag, value))
+
+
+with tempfile.TemporaryDirectory() as tmpdirname:
+    print("Using temporary directory: {}".format(tmpdirname))
+    print("**** Creating root privkey ****")
+    generate_privkey(get_root_privkey(tmpdirname))
+    generate_root_cert(tmpdirname)
+    print("**** Creating final privkey ****")
+    generate_privkey(get_final_privkey(tmpdirname))
+    privkey_data = parse_privkey(get_final_privkey(tmpdirname))
+    cert_data = generate_cert_file(tmpdirname)
+    print("**** Dumping to fido2.c ****")
+    generate_fido2_cert_source(cert_data, privkey_data)
+    print("Done :)")
+#
+#/**
+# * Generated with:
+# * test2cert = open('/home/simone/provola/server.der', 'rb').read()
+# * f.write(', '.join(['0x{:02x}'.format(b) for b in test2cert]))
+# */

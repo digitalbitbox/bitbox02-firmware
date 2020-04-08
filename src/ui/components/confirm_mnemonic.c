@@ -39,8 +39,10 @@ component_t* confirm_mnemonic_create(
     const char** wordlist,
     uint8_t length,
     uint8_t index,
-    void (*check_word_cb)(uint8_t),
-    void (*cancel_cb)(void))
+    void (*check_word_cb)(uint8_t, void*),
+    void* check_word_cb_param,
+    void (*cancel_cb)(void*),
+    void* cancel_cb_param)
 {
     component_t* confirm_mnemonic = malloc(sizeof(component_t));
     if (!confirm_mnemonic) {
@@ -60,7 +62,15 @@ component_t* confirm_mnemonic_create(
     ui_util_add_sub_component(
         confirm_mnemonic,
         scroll_through_all_variants_create(
-            wordlist, check_word_cb, length, "", NULL, cancel_cb, confirm_mnemonic));
+            wordlist,
+            check_word_cb,
+            check_word_cb_param,
+            length,
+            "",
+            NULL,
+            cancel_cb,
+            cancel_cb_param,
+            confirm_mnemonic));
 
     return confirm_mnemonic;
 }

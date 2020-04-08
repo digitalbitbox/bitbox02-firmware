@@ -42,6 +42,7 @@ void u2f_blocked_req_error(Packet* out_packet, const Packet* in_packet);
  * Called at every event loop to manage the U2F stack.
  */
 void u2f_process(void);
+void u2f_timer(void);
 
 /**
  * Called to abort any operation that blocked the U2F stack.

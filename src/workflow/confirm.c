@@ -88,6 +88,12 @@ static void _workflow_confirm_cleanup(workflow_t* self)
     ui_screen_stack_pop();
     ui_screen_stack_cleanup();
     data_t* data = (data_t*)self->data;
+    if (data->body) {
+        util_zero(data->body, strlen(data->body));
+    }
+    if (data->title) {
+        util_zero(data->title, strlen(data->title));
+    }
     free(data->title);
     free(data->body);
 }

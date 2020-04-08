@@ -37,7 +37,7 @@ static void _run_blocking_ui(bool (*is_done)(void))
 void workflow_blocking_block(void)
 {
     if (!_done) {
-        Abort("workflow_blocking_block");
+        Abort("workflow_blocking_block invalid state");
     }
     _done = false;
     _run_blocking_ui(_is_done);

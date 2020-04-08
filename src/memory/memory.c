@@ -116,6 +116,28 @@ typedef union {
     uint8_t bytes[CHUNK_SIZE];
 } chunk_2_t;
 
+// Resident key stored in memory:
+// the raw key object is stored, followed by a valid byte.
+// The key is valid if valid == sectrue_u8.
+typedef struct __attribute__((packed)) {
+    ctap_resident_key_t key;
+    uint8_t valid;
+} memory_resident_key_t;
+
+// CHUNK_3-4: FIDO2 resident keys (first chunk).
+typedef union {
+    struct __attribute__((__packed__)) {
+        memory_resident_key_t keys[MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK];
+    } fields;
+    uint8_t bytes[CHUNK_SIZE];
+} fido2_resident_key_chunk_t;
+
+#define CHUNK_3 (3)
+typedef fido2_resident_key_chunk_t chunk_3_t;
+
+#define CHUNK_4 (4)
+typedef fido2_resident_key_chunk_t chunk_4_t;
+
 // CHUNK_SHARED: Shared data between the bootloader and firmware.
 //    auto_enter: if sectrue_u8, bootloader mode is entered on reboot
 //    upside_down: passes screen orientation to the bootloader
@@ -809,4 +831,43 @@ bool memory_multisig_get_by_hash(const uint8_t* hash, char* name_out)
         }
     }
     return false;
+}
+
+static int _ctap_resident_key_chunk(int key_idx)
+{
+    return CHUNK_3 + key_idx / MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK;
+}
+
+bool memory_get_ctap_resident_key(int key_idx, ctap_resident_key_t* key_out)
+{
+    fido2_resident_key_chunk_t chunk = {0};
+    CLEANUP_CHUNK(chunk);
+    _read_chunk(_ctap_resident_key_chunk(key_idx), chunk.bytes);
+    /** TODO: simo: implement */
+    int key_idx_in_chunk = key_idx % MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK;
+    *key_out = chunk.fields.keys[key_idx_in_chunk].key;
+    if (chunk.fields.keys[key_idx_in_chunk].valid == sectrue_u8) {
+        key_out->valid = CTAP_RESIDENT_KEY_VALID;
+    } else {
+        key_out->valid = CTAP_RESIDENT_KEY_INVALID;
+    }
+    return true;
+}
+
+void memory_store_ctap_resident_key(int store_location, const ctap_resident_key_t* rk_to_store)
+{
+    fido2_resident_key_chunk_t chunk = {0};
+    CLEANUP_CHUNK(chunk);
+    int chunk_idx = _ctap_resident_key_chunk(store_location);
+    int key_idx_in_chunk = store_location % MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK;
+
+    _read_chunk(chunk_idx, chunk.bytes);
+
+    chunk.fields.keys[key_idx_in_chunk].key = *rk_to_store;
+    if (rk_to_store->valid == CTAP_RESIDENT_KEY_VALID) {
+        chunk.fields.keys[key_idx_in_chunk].valid = sectrue_u8;
+    } else {
+        chunk.fields.keys[key_idx_in_chunk].valid = secfalse_u8;
+    }
+    _write_chunk(chunk_idx, chunk.bytes);
 }

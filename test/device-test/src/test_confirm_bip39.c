@@ -51,8 +51,9 @@ static bool _mock_get_bip_39_mnemonic(char** mnemonic)
 
 static uint8_t _current_correct_idx;
 
-static void _confirm_mnemonic(uint8_t index)
+static void _confirm_mnemonic(uint8_t index, void* param)
 {
+    (void)param;
     if (index == 5) {
         screen_print_debug("back to seed phrase", 1000);
     } else if (index == _current_correct_idx) {
@@ -106,7 +107,10 @@ static uint8_t _create_random_unique_words(const char** wordlist, uint8_t length
     return index_word;
 }
 
-static void _cancel(void) {}
+static void _cancel(void* param)
+{
+    (void)param;
+}
 
 #define NUM_RANDOM_WORDS 5
 #define NUM_CONFIRM_WORDS (NUM_RANDOM_WORDS + 1)
@@ -123,8 +127,8 @@ int main(void)
     _current_correct_idx = _create_random_unique_words(wordlist, NUM_RANDOM_WORDS, "skirt");
     wordlist[NUM_CONFIRM_WORDS - 1] = "Back to seed phrase";
 
-    component_t* confirm_mnemonic =
-        confirm_mnemonic_create(wordlist, NUM_CONFIRM_WORDS, 0, _confirm_mnemonic, _cancel);
+    component_t* confirm_mnemonic = confirm_mnemonic_create(
+        wordlist, NUM_CONFIRM_WORDS, 0, _confirm_mnemonic, NULL, _cancel, NULL);
     ui_screen_stack_switch(confirm_mnemonic);
 
     firmware_main_loop();

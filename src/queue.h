@@ -33,6 +33,16 @@ struct queue;
 queue_error_t queue_push(struct queue* ctx, const uint8_t* data);
 
 /**
+ * Append the given data to the queue. If the queue is full, retry until data is available again.
+ *
+ * Calling this function from interrupt context should never be done: it will block forever
+ * as nothing will ever be able to pop data from the queue!
+ *
+ * @param[in] data Frame to be sent. Must be USB_REPORT_SIZE large.
+ */
+void queue_push_retry(struct queue* ctx, const uint8_t* data);
+
+/**
  * Return the first data that was added to the queue.
  * Returns NULL if empty
  */

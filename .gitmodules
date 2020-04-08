@@ -19,3 +19,6 @@
 [submodule "tools/ttf2ugui"]
 	path = tools/ttf2ugui
 	url = https://github.com/digitalbitbox/ttf2ugui
+[submodule "external/tinycbor"]
+	path = external/tinycbor
+	url = https://github.com/intel/tinycbor

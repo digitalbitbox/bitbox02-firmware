@@ -21,6 +21,8 @@
 #include "compiler_util.h"
 #include "util.h"
 
+#include <fido2/ctap.h>
+
 // Including null terminator.
 #define MEMORY_MULTISIG_NAME_MAX_LEN (31)
 
@@ -62,6 +64,11 @@ USE_RESULT bool memory_cleanup_smarteeprom(void);
 // Don't change this without proper memory layout migration! (see chunk_1_t in
 // memory.c)
 #define MEMORY_DEVICE_NAME_MAX_LEN (64)
+
+/* Each memory chunk can contain up to 23 resident keys. */
+#define MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK (23)
+#define MEMORY_CTAP_RESIDENT_KEYS_CHUNKS (2)
+#define MEMORY_CTAP_RESIDENT_KEYS_MAX (MEMORY_CTAP_RESIDENT_KEYS_CHUNKS * MEMORY_CTAP_RESIDENT_KEYS_PER_CHUNK)
 
 // set device name. name is an utf8-encoded string, and null terminated. The max
 // size (including the null terminator) is MEMORY_DEVICE_NAME_MAX_LEN bytes.
@@ -247,5 +254,12 @@ USE_RESULT memory_result_t memory_multisig_set_by_hash(const uint8_t* hash, cons
  * @return true if the multisig config was found, false otherwise.
  */
 USE_RESULT bool memory_multisig_get_by_hash(const uint8_t* hash, char* name_out);
+
+/*
+ * Loads the nth CTAP resident key from flash.
+ */
+USE_RESULT bool memory_get_ctap_resident_key(int key_idx, ctap_resident_key_t* key_out);
+
+void memory_store_ctap_resident_key(int store_location, const ctap_resident_key_t* rk_to_store);
 
 #endif // _MEMORY_H_

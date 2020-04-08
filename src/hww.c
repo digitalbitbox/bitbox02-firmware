@@ -188,7 +188,7 @@ static void _process_packet(const in_buffer_t* in_req, buffer_t* out_rsp)
     }
 }
 
-static void _msg(const Packet* in_packet, Packet* out_packet, const size_t max_out_len)
+static void _process_msg(const Packet* in_packet, Packet* out_packet)
 {
     if (in_packet->len == 0) {
         out_packet->data_addr[0] = HWW_RSP_NACK;
@@ -212,7 +212,7 @@ static void _msg(const Packet* in_packet, Packet* out_packet, const size_t max_o
     };
     hww_packet_rsp_t response = {
         .status = HWW_RSP_NACK,
-        .buffer = {.data = out_packet->data_addr + 1, .len = 0, .max_len = max_out_len - 1}};
+        .buffer = {.data = out_packet->data_addr + 1, .len = 0, .max_len = USB_DATA_MAX_LEN - 1}};
     switch (cmd) {
     case HWW_REQ_NEW:
         _process_packet(&decoded_buffer, &response.buffer);
@@ -235,6 +235,14 @@ static void _msg(const Packet* in_packet, Packet* out_packet, const size_t max_o
     } else {
         out_packet->len = 1;
     }
+}
+
+static void _msg(const Packet* in_packet) {
+    Packet* out_packet = util_malloc(sizeof(*out_packet));
+    prepare_usb_packet(in_packet->cmd, in_packet->cid, out_packet);
+    _process_msg(in_packet, out_packet);
+    usb_processing_send_packet(usb_processing_hww(), out_packet);
+    free(out_packet);
 }
 
 bool hww_blocking_request_can_go_through(const Packet* in_packet)

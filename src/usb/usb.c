@@ -25,13 +25,14 @@
 #include "usb_processing.h"
 
 #ifndef TESTING
+#include <driver_init.h>
 #include <hal_timer.h>
+#include <u2f.h>
 #include <u2f/u2f_packet.h>
 #include <usb/usb_packet.h>
-extern struct timer_descriptor TIMER_0;
 #endif
 
-#define TIMEOUT_TICK_PERIOD_MS 100
+#define TIMEOUT_TICK_PERIOD_MS 50
 
 #ifndef TESTING
 static uint8_t _ctrl_endpoint_buffer[USB_REPORT_SIZE];
@@ -75,6 +76,7 @@ static void _timeout_cb(const struct timer_task* const timer_task)
 {
     (void)timer_task;
     u2f_packet_timeout_tick();
+    u2f_timer();
 }
 #endif
 

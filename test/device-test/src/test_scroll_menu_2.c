@@ -42,7 +42,7 @@ int main(void)
 
     const char* words[] = {"first", "second", "third", "forth"};
     component_t* test_scroll_through_2 =
-        scroll_through_all_variants_create(words, NULL, 4, NULL, NULL, NULL, NULL);
+        scroll_through_all_variants_create(words, NULL, NULL, 4, NULL, NULL, NULL, NULL, NULL);
 
     ui_screen_stack_push(test_scroll_through_2);
     firmware_main_loop();

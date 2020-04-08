@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <hardfault.h>
-#include <limits.h>
+#include "util.h"
+
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "rust/rust.h"
-#include "util.h"
+
+#include <hardfault.h>
+#include <limits.h>
 
 void util_zero(volatile void* dst, size_t len)
 {
@@ -57,12 +60,45 @@ void util_cleanup_64(uint8_t** buf)
     util_zero(*buf, 64);
 }
 
+void* util_malloc(size_t size)
+{
+    void* result = malloc(size);
+    if ((!result) && (size > 0)) {
+        Abort("util_malloc failed.");
+    }
+    return result;
+}
+
 char* util_strdup(const char* str)
 {
     char* result = strdup(str);
     if (!result) {
         Abort("malloc failed in util_strdup.");
     }
+    return result;
+}
+
+__attribute__ ((format (printf, 1, 2)))
+char* util_asprintf(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    // There is a bug in clang-tidy
+    // See https://bugs.llvm.org/show_bug.cgi?id=41311
+    /* Estimate the size of the resulting string. */
+    int str_size = vsnprintf(NULL, 0, fmt, args); // NOLINT
+    if (str_size < 0) {
+        Abort("util_asprintf: vsnprintf count failed.");
+    }
+    char* result = malloc(str_size + 1);
+    if (!result) {
+        Abort("util_asprintf: malloc failed.");
+    }
+    int actual_size = vsnprintf(result, str_size + 1, fmt, args); // NOLINT
+    if (actual_size != str_size) {
+        Abort("util_asprintf: vsnprintf failed.");
+    }
+    va_end(args);
     return result;
 }
 
