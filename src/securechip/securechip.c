@@ -110,9 +110,10 @@ static ATCA_STATUS _post_init(void* iface)
  *                         As output, the number of bytes received.
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
-static ATCA_STATUS _receive(void* iface, uint8_t* rxdata, uint16_t* rxlength)
+static ATCA_STATUS _receive(void* iface, uint8_t word_address, uint8_t* rxdata, uint16_t* rxlength)
 {
     (void)iface;
+    (void)word_address;
     uint8_t ret = i2c_ecc_read(rxdata, *rxlength);
     if (ret) {
         return ATCA_COMM_FAIL;
@@ -127,9 +128,10 @@ static ATCA_STATUS _receive(void* iface, uint8_t* rxdata, uint16_t* rxlength)
  * \param[in] txlength  number of bytes to send
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
-static ATCA_STATUS _send(void* iface, uint8_t* txdata, int txlength)
+static ATCA_STATUS _send(void* iface, uint8_t word_address, uint8_t* txdata, int txlength)
 {
     (void)iface;
+    (void)word_address;
     // txdata[0] is using _reserved byte of the ATCAPacket
     txdata[0] = I2C_ECC_CHIP_CMD;
     // Account for the _reserved byte, similar to
@@ -184,7 +186,7 @@ static ATCAIfaceCfg cfg = {
     // TODO: can likely use cryptoauthlib/lib/hal/hal_i2c_start.(c|h) for all or
     // some of the functionality, possibly using cfg_ateccx08a_i2c_default
     .iface_type = ATCA_CUSTOM_IFACE,
-    .devtype = ATECC608A,
+    .devtype = ATECC608,
     .atcacustom.halinit = &_init,
     .atcacustom.halpostinit = &_post_init,
     .atcacustom.halreceive = &_receive,
