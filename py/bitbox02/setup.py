@@ -82,4 +82,5 @@ setup(
         "typing_extensions>=3.7.4",
         "base58>=2.0.0",
     ],
+    extras_require={"ethereum": ["rlp>=2.0.1"]},
 )
