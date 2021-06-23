@@ -30,6 +30,7 @@
 #include "ui/event_handler.h"
 #include "util.h"
 #include <platform_config.h>
+#include <systick.h>
 #include <ui/component.h>
 
 #define MAX_REGISTRATIONS 7
@@ -109,6 +110,13 @@ enum bitboxbase_button_id_t gestures_button_which(const event_t* event)
     return ((const struct button_detection_state_t*)event->data)->button_id;
 }
 #endif
+
+/*** Debounce all events ***/
+
+#define NUM_EVENTS 22 // Must match event.h
+#define MIN_WAIT_MS 100 // Must wait at least MIN_WAIT_MS milliseconds before emitting again
+static uint32_t _last_emit_ts[NUM_EVENTS]; // For every event we have a systick timestamp of when it
+                                           // was last emitted.
 
 /********************************** STATE UPDATE **********************************/
 
@@ -216,6 +224,13 @@ static void _gesture_emit_event(uint8_t id, slider_location_t location)
     if (!_released_since_new_screen) {
         return;
     }
+    // Throttle how many events to emit by looking at the timestamp of previously emitted event.
+    // Second check is for wrap around behavior of systick.
+    uint32_t ticks = systick_get();
+    if (ticks - _last_emit_ts[id] < MIN_WAIT_MS && ticks > _last_emit_ts[id]) {
+        return;
+    }
+    _last_emit_ts[id] = ticks;
     gestures_slider_data_t slider_data;
     _collect_gestures_data(&_state[location], &slider_data);
     event_t event = {.data = &slider_data, .id = id};
