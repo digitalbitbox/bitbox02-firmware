@@ -192,28 +192,31 @@ set_property(TARGET asf4-drivers PROPERTY INTERFACE_LINK_LIBRARIES "")
     cryptoauthlib/lib/atca_cfgs.c
     cryptoauthlib/lib/atca_command.c
     cryptoauthlib/lib/atca_device.c
-    cryptoauthlib/lib/atca_execution.c
     cryptoauthlib/lib/atca_iface.c
     cryptoauthlib/lib/hal/atca_hal.c
     cryptoauthlib/lib/hal/hal_timer_start.c
-    cryptoauthlib/lib/basic/atca_basic.c
-    cryptoauthlib/lib/basic/atca_basic_counter.c
-    cryptoauthlib/lib/basic/atca_basic_gendig.c
-    cryptoauthlib/lib/basic/atca_basic_nonce.c
-    cryptoauthlib/lib/basic/atca_basic_checkmac.c
-    cryptoauthlib/lib/basic/atca_basic_info.c
-    cryptoauthlib/lib/basic/atca_basic_derivekey.c
-    cryptoauthlib/lib/basic/atca_basic_random.c
-    cryptoauthlib/lib/basic/atca_basic_selftest.c
-    cryptoauthlib/lib/basic/atca_basic_read.c
-    cryptoauthlib/lib/basic/atca_basic_privwrite.c
-    cryptoauthlib/lib/basic/atca_basic_verify.c
-    cryptoauthlib/lib/basic/atca_basic_write.c
-    cryptoauthlib/lib/basic/atca_basic_updateextra.c
-    cryptoauthlib/lib/basic/atca_basic_lock.c
-    cryptoauthlib/lib/basic/atca_basic_kdf.c
-    cryptoauthlib/lib/basic/atca_basic_genkey.c
-    cryptoauthlib/lib/basic/atca_basic_sign.c
+    cryptoauthlib/lib/atca_basic.c
+    cryptoauthlib/lib/atca_debug.c
+    cryptoauthlib/lib/calib/calib_basic.c
+    cryptoauthlib/lib/calib/calib_command.c
+    cryptoauthlib/lib/calib/calib_execution.c
+    cryptoauthlib/lib/calib/calib_counter.c
+    cryptoauthlib/lib/calib/calib_gendig.c
+    cryptoauthlib/lib/calib/calib_nonce.c
+    cryptoauthlib/lib/calib/calib_checkmac.c
+    cryptoauthlib/lib/calib/calib_info.c
+    cryptoauthlib/lib/calib/calib_derivekey.c
+    cryptoauthlib/lib/calib/calib_random.c
+    cryptoauthlib/lib/calib/calib_selftest.c
+    cryptoauthlib/lib/calib/calib_read.c
+    cryptoauthlib/lib/calib/calib_privwrite.c
+    cryptoauthlib/lib/calib/calib_verify.c
+    cryptoauthlib/lib/calib/calib_write.c
+    cryptoauthlib/lib/calib/calib_updateextra.c
+    cryptoauthlib/lib/calib/calib_lock.c
+    cryptoauthlib/lib/calib/calib_kdf.c
+    cryptoauthlib/lib/calib/calib_genkey.c
+    cryptoauthlib/lib/calib/calib_sign.c
     cryptoauthlib/lib/host/atca_host.c
     cryptoauthlib/lib/crypto/hashes/sha2_routines.c
     cryptoauthlib/lib/crypto/atca_crypto_sw_sha2.c
@@ -221,7 +224,10 @@ set_property(TARGET asf4-drivers PROPERTY INTERFACE_LINK_LIBRARIES "")
   target_link_libraries(cryptoauthlib samd51a-ds asf4-drivers-min)
   set_property(TARGET cryptoauthlib PROPERTY INTERFACE_LINK_LIBRARIES "")
   target_compile_definitions(cryptoauthlib PUBLIC ATCA_HAL_CUSTOM ATCA_NO_POLL)
-  target_include_directories(cryptoauthlib SYSTEM PUBLIC cryptoauthlib/lib)
+  target_include_directories(cryptoauthlib SYSTEM PUBLIC
+    cryptoauthlib/lib
+    ${CMAKE_CURRENT_SOURCE_DIR} # for the BitBox02-custom "atca_config.h"
+    )
   target_compile_options(cryptoauthlib PRIVATE -Wno-pedantic -Wno-incompatible-pointer-types -Wno-unused-parameter -Wno-unused-variable)
 
   add_library(fatfs
