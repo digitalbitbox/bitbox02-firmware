@@ -79,44 +79,53 @@ pub struct SighashParams<'a> {
     pub chain_id: u8,
 }
 
-pub fn sighash(params: SighashParams) -> Result<[u8; 32], ()> {
+pub fn sighash_eth(params: SighashParams) -> Result<[u8; 32], ()> {
     let mut sighash_out = [0u8; 32];
-    let result = unsafe {
-        bitbox02_sys::app_eth_sighash(
-            bitbox02_sys::eth_sighash_params_t {
-                nonce: in_buffer_t {
-                    data: params.nonce.as_ptr(),
-                    len: params.nonce.len() as _,
-                },
-                gas_price: in_buffer_t {
-                    data: params.gas_price.as_ptr(),
-                    len: params.gas_price.len() as _,
-                },
-                gas_limit: in_buffer_t {
-                    data: params.gas_limit.as_ptr(),
-                    len: params.gas_limit.len() as _,
-                },
-                recipient: in_buffer_t {
-                    data: params.recipient.as_ptr(),
-                    len: params.recipient.len() as _,
-                },
-                value: in_buffer_t {
-                    data: params.value.as_ptr(),
-                    len: params.value.len() as _,
-                },
-                data: in_buffer_t {
-                    data: params.data.as_ptr(),
-                    len: params.data.len() as _,
-                },
-                chain_id: params.chain_id,
-            },
-            sighash_out.as_mut_ptr(),
-        )
-    };
+    let params = sighash_prepare(params);
+    let result = unsafe { bitbox02_sys::app_eth_sighash(params, sighash_out.as_mut_ptr())};
     if result {
         Ok(sighash_out)
     } else {
         Err(())
+    }
+}
+pub fn sighash_etc(params: SighashParams) -> Result<[u8; 32], ()> {
+    let mut sighash_out = [0u8; 32];
+    let params = sighash_prepare(params);
+    let result = unsafe { bitbox02_sys::app_eth_sighash(params, sighash_out.as_mut_ptr())};
+    if result {
+        Ok(sighash_out)
+    } else {
+        Err(())
+    }
+}
+fn sighash_prepare(params: SighashParams) -> bitbox02_sys::eth_sighash_params_t {
+    bitbox02_sys::eth_sighash_params_t {
+        nonce: in_buffer_t {
+            data: params.nonce.as_ptr(),
+            len: params.nonce.len() as _,
+        },
+        gas_price: in_buffer_t {
+            data: params.gas_price.as_ptr(),
+            len: params.gas_price.len() as _,
+        },
+        gas_limit: in_buffer_t {
+            data: params.gas_limit.as_ptr(),
+            len: params.gas_limit.len() as _,
+        },
+        recipient: in_buffer_t {
+            data: params.recipient.as_ptr(),
+            len: params.recipient.len() as _,
+        },
+        value: in_buffer_t {
+            data: params.value.as_ptr(),
+            len: params.value.len() as _,
+        },
+        data: in_buffer_t {
+            data: params.data.as_ptr(),
+            len: params.data.len() as _,
+        },
+        chain_id: params.chain_id,
     }
 }
 

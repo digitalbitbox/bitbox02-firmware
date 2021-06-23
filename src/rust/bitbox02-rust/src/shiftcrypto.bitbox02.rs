@@ -708,6 +708,9 @@ pub enum EthCoin {
     Eth = 0,
     RopstenEth = 1,
     RinkebyEth = 2,
+    Etc = 3,
+    KottiEtc = 4,
+    MordorEtc = 5,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ElectrumEncryptionKeyRequest {

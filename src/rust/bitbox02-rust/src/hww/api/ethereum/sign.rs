@@ -19,7 +19,7 @@ use super::Error;
 use bitbox02::keystore;
 
 use crate::workflow::{confirm, transaction};
-use bitbox02::app_eth::{params_get, sighash, Params, SighashParams};
+use bitbox02::app_eth::{params_get, sighash_eth, sighash_etc, Params, SighashParams};
 
 use alloc::vec::Vec;
 use core::convert::TryInto;
@@ -187,7 +187,19 @@ pub async fn process(request: &pb::EthSignRequest) -> Result<Response, Error> {
     let params = params_get(request.coin as _).ok_or(Error::InvalidInput)?;
 
     if !ethereum::keypath::is_valid_keypath_address(&request.keypath, params.bip44_coin) {
-        return Err(Error::InvalidInput);
+        confirm::confirm(&confirm::Params {
+            title: "Unusual\nbip32 path",
+            body: "Only proceed if you\nunderstand exactly\nwhat the path means.",
+            accept_is_nextarrow: true,
+            ..Default::default()
+        }).await?;
+
+        confirm::confirm(&confirm::Params {
+            title: "Unusual\nbip32 path",
+            body: &util::bip32::to_string(&request.keypath),
+            accept_is_nextarrow: true,
+            ..Default::default()
+        }).await?;
     }
 
     // Size limits.
@@ -226,16 +238,21 @@ pub async fn process(request: &pb::EthSignRequest) -> Result<Response, Error> {
         verify_standard_transaction(request, &params).await?;
     }
 
-    let hash = sighash(SighashParams {
-        nonce: &request.nonce,
-        gas_price: &request.gas_price,
-        gas_limit: &request.gas_limit,
-        recipient: &recipient,
-        value: &request.value,
-        data: &request.data,
-        chain_id: params.chain_id,
-    })
-    .or(Err(Error::InvalidInput))?;
+    let hash = if false {
+        // Call sighash_etc
+        todo!()
+    } else {
+        sighash_eth(SighashParams {
+            nonce: &request.nonce,
+            gas_price: &request.gas_price,
+            gas_limit: &request.gas_limit,
+            recipient: &recipient,
+            value: &request.value,
+            data: &request.data,
+            chain_id: params.chain_id,
+        })
+        .or(Err(Error::InvalidInput))?
+    };
 
     let host_nonce = match request.host_nonce_commitment {
         // Engage in the anti-klepto protocol if the host sends a host nonce commitment.

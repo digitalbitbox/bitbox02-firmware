@@ -29,6 +29,9 @@ fn coin_title(coin: pb::EthCoin) -> &'static str {
         pb::EthCoin::Eth => "Ethereum",
         pb::EthCoin::RopstenEth => "Ropsten",
         pb::EthCoin::RinkebyEth => "Rinkeby",
+        pb::EthCoin::Etc => "Ethereum Classic",
+        pb::EthCoin::KottiEtc => "Kotti",
+        pb::EthCoin::MordorEtc => "Mordor",
     }
 }
 

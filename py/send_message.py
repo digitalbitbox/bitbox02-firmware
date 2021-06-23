@@ -688,6 +688,34 @@ class SendMessage:
 
         print("Signature: 0x{}".format(binascii.hexlify(sig).decode("utf-8")))
 
+    def _get_etc_xpub(self) -> None:
+        try:
+            xpub = self._device.eth_pub(
+                keypath=[44 + HARDENED, 61 + HARDENED, 0 + HARDENED, 0],
+                output_type=bitbox02.eth.ETHPubRequest.XPUB,  # pylint: disable=no-member
+                display=False,
+            )
+        except UserAbortException:
+            eprint("Aborted by user")
+
+        print("Ethereum Classic xpub: {}".format(xpub))
+
+    def _display_etc_address(self, contract_address: bytes = b"") -> None:
+        def address(display: bool = False) -> str:
+            return self._device.eth_pub(
+                keypath=[44 + HARDENED, 61 + HARDENED, 0 + HARDENED, 0, 0],
+                output_type=bitbox02.eth.ETHPubRequest.ADDRESS,  # pylint: disable=no-member
+                contract_address=contract_address,
+                display=display,
+            )
+
+        print("Ethereum Classic address: {}".format(address(display=False)))
+        try:
+            address(display=True)
+        except UserAbortException:
+            eprint("Aborted by user")
+
+
     def _reset_device(self) -> None:
         if self._device.reset():
             print("Device RESET")
@@ -748,6 +776,8 @@ class SendMessage:
             ),
             ("Sign Ethereum tx", self._sign_eth_tx),
             ("Sign Ethereum Message", self._sign_eth_message),
+            ("Retrieve Ethereum Classic xpub", self._get_etc_xpub),
+            ("Retrieve Ethereum Classic address", self._display_etc_address),
             ("Show Electrum wallet encryption key", self._get_electrum_encryption_key),
             ("Reset Device", self._reset_device),
         )

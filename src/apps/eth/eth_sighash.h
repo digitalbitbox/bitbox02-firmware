@@ -42,4 +42,12 @@ typedef struct {
  */
 USE_RESULT bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out);
 
+/**
+ * Computes the sighash of an Ethereum Classic transaction.
+ * @param[in] params transaction data. nonce, gas_price, gas_limit, and value are big endian and are
+ * not allowed to have leading zeros (unchecked).
+ * @param[out] sighash_out 32 bytes hash to be signed.
+ */
+USE_RESULT bool app_eth_sighash_etc(eth_sighash_params_t params, uint8_t* sighash_out);
+
 #endif

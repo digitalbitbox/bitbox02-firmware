@@ -79,7 +79,7 @@ static void _hash_element(
     }
 }
 
-bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out)
+static bool _sighash(bool eip155_enable, eth_sighash_params_t params, uint8_t* sighash_out)
 {
     // We hash [nonce, gas price, gas limit, recipient, value, data], RLP encoded.
     // The list length prefix is (0xc0 + length of the encoding of all elements).
@@ -91,7 +91,9 @@ bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out)
     _hash_element(NULL, params.recipient.data, params.recipient.len, &encoded_length);
     _hash_element(NULL, params.value.data, params.value.len, &encoded_length);
     _hash_element(NULL, params.data.data, params.data.len, &encoded_length);
-    encoded_length += 3; // EIP155 part, see below.
+    if(eip155_enable) {
+        encoded_length += 3;
+    }
     if (encoded_length > 0xffff) {
         // Don't support bigger than this for now.
         return false;
@@ -106,7 +108,7 @@ bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out)
     _hash_element(&ctx, params.recipient.data, params.recipient.len, NULL);
     _hash_element(&ctx, params.value.data, params.value.len, NULL);
     _hash_element(&ctx, params.data.data, params.data.len, NULL);
-    { // EIP155
+    if(eip155_enable){
         if (params.chain_id == 0 || params.chain_id > 0x7f) {
             Abort("chain id encoding error");
         }
@@ -116,4 +118,14 @@ bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out)
     }
     rhash_keccak_final(&ctx, sighash_out);
     return true;
+}
+
+bool app_eth_sighash(eth_sighash_params_t params, uint8_t* sighash_out)
+{
+    return _sighash(true, params, sighash_out);
+}
+
+bool app_eth_sighash_etc(eth_sighash_params_t params, uint8_t* sighash_out)
+{
+    return _sighash(false, params, sighash_out);
 }

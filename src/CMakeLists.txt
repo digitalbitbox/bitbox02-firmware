@@ -422,6 +422,7 @@ add_custom_target(rust-bindgen
     --whitelist-function app_eth_params_get
     --whitelist-function app_eth_erc20_params_get
     --whitelist-function app_eth_sighash
+    --whitelist-function app_eth_sighash_etc
     --whitelist-function app_btc_address_simple
     --whitelist-function reboot
     ${CMAKE_CURRENT_SOURCE_DIR}/rust/bitbox02-sys/wrapper.h --

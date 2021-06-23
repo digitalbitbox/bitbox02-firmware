@@ -22,6 +22,9 @@ enum ETHCoin {
   ETH = 0;
   RopstenETH = 1;
   RinkebyETH = 2;
+  ETC = 3;
+  KottiETC = 4;
+  MordorETC = 5;
 }
 
 message ETHPubRequest {

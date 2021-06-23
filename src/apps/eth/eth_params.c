@@ -18,22 +18,44 @@
 
 #include <wally_bip32.h>
 
+#define BIP44_COINTYPE_TESTNET 1
+#define BIP44_COINTYPE_ETH 60
+#define BIP44_COINTYPE_ETC 61
+
 static const app_eth_coin_params_t _params_eth = {
-    .bip44_coin = 60 + BIP32_INITIAL_HARDENED_CHILD,
+    .bip44_coin = BIP44_COINTYPE_ETH + BIP32_INITIAL_HARDENED_CHILD,
     .chain_id = 1,
     .unit = "ETH",
 };
 
 static const app_eth_coin_params_t _params_ropsten_eth = {
-    .bip44_coin = 1 + BIP32_INITIAL_HARDENED_CHILD,
+    .bip44_coin = BIP44_COINTYPE_TESTNET + BIP32_INITIAL_HARDENED_CHILD,
     .chain_id = 3,
     .unit = "TETH",
 };
 
 static const app_eth_coin_params_t _params_rinkeby_eth = {
-    .bip44_coin = 1 + BIP32_INITIAL_HARDENED_CHILD,
+    .bip44_coin = BIP44_COINTYPE_TESTNET + BIP32_INITIAL_HARDENED_CHILD,
     .chain_id = 4,
     .unit = "TETH",
+};
+
+static const app_eth_coin_params_t _params_etc = {
+    .bip44_coin = BIP44_COINTYPE_ETC + BIP32_INITIAL_HARDENED_CHILD,
+    .chain_id = 1,
+    .unit = "ETC",
+};
+
+static const app_eth_coin_params_t _params_kotti_etc = {
+    .bip44_coin = BIP44_COINTYPE_TESTNET + BIP32_INITIAL_HARDENED_CHILD,
+    .chain_id = 6,
+    .unit = "TETC",
+};
+
+static const app_eth_coin_params_t _params_mordor_etc = {
+    .bip44_coin = BIP44_COINTYPE_TESTNET + BIP32_INITIAL_HARDENED_CHILD,
+    .chain_id = 7,
+    .unit = "TETC",
 };
 
 const app_eth_coin_params_t* app_eth_params_get(ETHCoin coin)
@@ -45,6 +67,12 @@ const app_eth_coin_params_t* app_eth_params_get(ETHCoin coin)
         return &_params_ropsten_eth;
     case ETHCoin_RinkebyETH:
         return &_params_rinkeby_eth;
+    case ETHCoin_ETC:
+        return &_params_etc;
+    case ETHCoin_KottiETC:
+        return &_params_kotti_etc;
+    case ETHCoin_MordorETC:
+        return &_params_mordor_etc;
     default:
         return NULL;
     }

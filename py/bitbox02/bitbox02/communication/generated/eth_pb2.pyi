@@ -50,9 +50,15 @@ class ETHCoin(int):
     ETH = typing___cast(ETHCoin, 0)
     RopstenETH = typing___cast(ETHCoin, 1)
     RinkebyETH = typing___cast(ETHCoin, 2)
+    ETC = typing___cast(ETHCoin, 3)
+    KottiETC = typing___cast(ETHCoin, 4)
+    MordorETC = typing___cast(ETHCoin, 5)
 ETH = typing___cast(ETHCoin, 0)
 RopstenETH = typing___cast(ETHCoin, 1)
 RinkebyETH = typing___cast(ETHCoin, 2)
+ETC = typing___cast(ETHCoin, 3)
+KottiETC = typing___cast(ETHCoin, 4)
+MordorETC = typing___cast(ETHCoin, 5)
 
 class ETHPubRequest(google___protobuf___message___Message):
     class OutputType(int):
