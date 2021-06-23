@@ -3,7 +3,7 @@ Filename : qtm_acq_same54_0x000f_api.h
 Project : QTouch Modular Library
 Purpose : API for Acquisition module - SAME54/PTC
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip Inc. All rights reserved.
+Copyright (c) 2019 Microchip Inc. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 
@@ -30,7 +30,7 @@ Copyright (c) 2017 Microchip Inc. All rights reserved.
 #define CAL_CHRG_5TAU 3u
 
 #define RSEL_MAX_OPTION RSEL_VAL_200
-#define PRSC_MAX_OPTION PRSC_DIV_SEL_128
+#define PRSC_MAX_OPTION PRSC_DIV_SEL_256
 
 #define NUM_PTC_XY_LINES 32u
 
@@ -72,11 +72,9 @@ typedef enum tag_filter_level_t {
 /* Touch library GAIN setting */
 typedef enum tag_gain_t { GAIN_1, GAIN_2, GAIN_4, GAIN_8, GAIN_16 } gain_t;
 /* PTC clock prescale setting.
- * Example: if Generic clock input to PTC = 4MHz, then:
- * PRSC_DIV_SEL_1 sets PTC Clock to 4MHz
+ * For Example: if Generic clock input to PTC = 4MHz, then:
  * PRSC_DIV_SEL_2 sets PTC Clock to 2MHz
  * PRSC_DIV_SEL_4 sets PTC Clock to 1MHz
- * PRSC_DIV_SEL_8 sets PTC Clock to 500KHz
  *
  */
 typedef enum tag_prsc_div_sel_t {
@@ -87,7 +85,8 @@ typedef enum tag_prsc_div_sel_t {
 	PRSC_DIV_SEL_16,
 	PRSC_DIV_SEL_32,
 	PRSC_DIV_SEL_64,
-	PRSC_DIV_SEL_128
+	PRSC_DIV_SEL_128,
+	PRSC_DIV_SEL_256
 } prsc_div_sel_t;
 
 /**
@@ -191,6 +190,52 @@ typedef struct {
 	uint8_t                    auto_scan_node_threshold;
 	uint8_t                    auto_scan_trigger;
 } qtm_auto_scan_config_t;
+
+#define DRIVEN_SHIELD_DUMMY_ACQ 3u
+
+typedef void (*qtm_drivenshield_callback_t)(uint8_t csd, uint8_t sds, uint8_t prescaler, uint8_t volatile *ptr,
+                                            uint8_t value);
+
+/* Drivenshield status flag */
+typedef struct qtm_drivenshield_config_tag {
+	uint8_t flags;
+} qtm_drivenshield_config_t;
+
+/*============================================================================
+touch_ret_t qtm_drivenshield_setup(qtm_drivenshield_config_t* config);
+------------------------------------------------------------------------------
+Purpose: Setup the drivenshield with settings from the user
+Input  : drivenshield_config_t  setup in touch.c and touch.h
+Output : touch_ret_t
+Notes  : Called by application to load the drivenshield operating parameters
+
+============================================================================*/
+touch_ret_t qtm_drivenshield_setup(qtm_drivenshield_config_t *config);
+
+/*============================================================================
+void qtm_drivenshield_register_start_callback(qtm_drivenshield_callback_t callback);
+------------------------------------------------------------------------------
+Purpose: Register the drivenshield Start callback with the touch library
+Input  : Pointer to the application function to start the event system
+Output : touch_ret_t
+Notes  : The library initialises this with a null, if this remains the
+         library will function as normal, if this is not null then the
+         application will start the event system and call this callback before
+         start of touch measurement
+
+============================================================================*/
+touch_ret_t qtm_drivenshield_register_start_callback(qtm_drivenshield_callback_t callback);
+
+/*============================================================================
+touch_ret_t qtm_drivenshield_deregister_start_callback(void);
+------------------------------------------------------------------------------
+Purpose: De-register the drivenshield Start callback with the touch library
+Input  : None
+Output : touch_ret_t
+Notes  : When this function is called driven shield functionality will stop
+
+============================================================================*/
+touch_ret_t qtm_drivenshield_deregister_start_callback(void);
 
 /*----------------------------------------------------------------------------
  * prototypes

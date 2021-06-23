@@ -3,7 +3,7 @@ Filename : qtm_acq_samd51_0x000f_api.h
 Project : QTouch Modular Library
 Purpose : API for Acquisition module - SAMD51/PTC
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip Inc. All rights reserved.
+Copyright (c) 2019 Microchip Inc. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 

@@ -3,7 +3,7 @@ Filename : touch.h
 Project : QTouch Modular Library
 Purpose : configuation macros for touch library
 
-This file is part of QTouch Modular Library Release 5.1 example application.
+This file is part of QTouch Modular Library Release 7.4.1 application.
 
 Important Note: This file was created using the QTouch Configurator within
                 Atmel Start and then patched.
@@ -13,7 +13,7 @@ Support: Visit http://www.microchip.com/support/hottopics.aspx
                to create MySupport case.
 
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (c) 2020 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 

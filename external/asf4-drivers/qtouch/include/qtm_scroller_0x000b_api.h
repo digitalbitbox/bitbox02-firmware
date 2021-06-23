@@ -3,7 +3,7 @@ Filename : qtm_scroller_api.h
 Project : QTouch Modular Library
 Purpose : Structs and definitions for use within modules
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (C) 2020 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 
@@ -15,51 +15,51 @@ Copyright (c) 2017 Microchip. All rights reserved.
 #include "qtm_common_components_api.h"
 
 /* Scroller status bits */
-#define TOUCH_ACTIVE (uint8_t)((uint8_t)1 << 0u)     /* Bit 0 */
-#define POSITION_CHANGE (uint8_t)((uint8_t)1 << 1u)  /* Bit 1 */
-#define SCROLLER_REBURST (uint8_t)((uint8_t)1 << 7u) /* Bit 7 */
+#define SCROLLER_TOUCH_ACTIVE (uint8_t)((uint8_t)1 << 0u)    /* Bit 0 */
+#define SCROLLER_POSITION_CHANGE (uint8_t)((uint8_t)1 << 1u) /* Bit 1 */
+#define SCROLLER_REBURST (uint8_t)((uint8_t)1 << 7u)         /* Bit 7 */
 
 /* Extract Resolution / Deadband */
-#define SCR_RESOLUTION(m) (uint8_t)(((m)&0xF0u) >> 4u)
-#define SCR_DEADBAND(m) (uint8_t)((m)&0x0Fu)
+#define SCROLLER_RESOLUTION(m) (uint8_t)(((m)&0xF0u) >> 4u)
+#define SCROLLER_DEADBAND(m) (uint8_t)((m)&0x0Fu)
 
 /* Combine Resolution / Deadband */
-#define SCR_RESOL_DEADBAND(r, p) (uint8_t)(((r) << 4u) | (p))
+#define SCROLLER_RESOL_DEADBAND(r, p) (uint8_t)(((r) << 4u) | (p))
 
 /* scroller resolution setting */
-typedef enum tag_resolution_t {
-	RESOL_2_BIT = 2,
-	RESOL_3_BIT,
-	RESOL_4_BIT,
-	RESOL_5_BIT,
-	RESOL_6_BIT,
-	RESOL_7_BIT,
-	RESOL_8_BIT,
-	RESOL_9_BIT,
-	RESOL_10_BIT,
-	RESOL_11_BIT,
-	RESOL_12_BIT
-} scr_resolution_t;
+typedef enum tag_scroller_resolution_t {
+	SCR_RESOL_2_BIT = 2,
+	SCR_RESOL_3_BIT,
+	SCR_RESOL_4_BIT,
+	SCR_RESOL_5_BIT,
+	SCR_RESOL_6_BIT,
+	SCR_RESOL_7_BIT,
+	SCR_RESOL_8_BIT,
+	SCR_RESOL_9_BIT,
+	SCR_RESOL_10_BIT,
+	SCR_RESOL_11_BIT,
+	SCR_RESOL_12_BIT
+} scroller_resolution_t;
 
 /* scroller deadband percentage setting */
-typedef enum tag_deadband_t {
-	DB_NONE,
-	DB_1_PERCENT,
-	DB_2_PERCENT,
-	DB_3_PERCENT,
-	DB_4_PERCENT,
-	DB_5_PERCENT,
-	DB_6_PERCENT,
-	DB_7_PERCENT,
-	DB_8_PERCENT,
-	DB_9_PERCENT,
-	DB_10_PERCENT,
-	DB_11_PERCENT,
-	DB_12_PERCENT,
-	DB_13_PERCENT,
-	DB_14_PERCENT,
-	DB_15_PERCENT
-} scr_deadband_t;
+typedef enum tag_scroller_deadband_t {
+	SCR_DB_NONE,
+	SCR_DB_1_PERCENT,
+	SCR_DB_2_PERCENT,
+	SCR_DB_3_PERCENT,
+	SCR_DB_4_PERCENT,
+	SCR_DB_5_PERCENT,
+	SCR_DB_6_PERCENT,
+	SCR_DB_7_PERCENT,
+	SCR_DB_8_PERCENT,
+	SCR_DB_9_PERCENT,
+	SCR_DB_10_PERCENT,
+	SCR_DB_11_PERCENT,
+	SCR_DB_12_PERCENT,
+	SCR_DB_13_PERCENT,
+	SCR_DB_14_PERCENT,
+	SCR_DB_15_PERCENT
+} scroller_deadband_t;
 
 /*----------------------------------------------------------------------------
  *     Structure Declarations

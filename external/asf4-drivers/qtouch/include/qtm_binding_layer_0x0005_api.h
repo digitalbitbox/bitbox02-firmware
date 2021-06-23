@@ -3,7 +3,7 @@ Filename : qtm_binding_layer_api.h
 Project : QTouch Modular Library
 Purpose : Binds the acquisition and post processing modules and provides callback
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (C) 2019 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 

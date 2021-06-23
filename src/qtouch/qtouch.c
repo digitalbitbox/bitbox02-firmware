@@ -1,4 +1,3 @@
-
 /*============================================================================
 Filename : touch.c
 Project : QTouch Modular Library
@@ -6,7 +5,7 @@ Purpose : Provides Initialization, Processing and ISR handler of touch library,
           Simple API functions to get/set the key touch parameters from/to the
           touch library data structures
 
-This file is part of QTouch Modular Library Release 5.1 example application.
+This file is part of QTouch Modular Library Release 7.4.1 application.
 
 Important Note: This file was created using the QTouch Configurator within
                 Atmel Start and then patched.
@@ -16,12 +15,20 @@ Support: Visit http://www.microchip.com/support/hottopics.aspx
                to create MySupport case.
 
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (c) 2020 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 
 #ifndef TOUCH_C
 #define TOUCH_C
+
+#ifdef __XC8__
+#warning "The library is not tested for XC8 compiler, use AVR-GCC compiler instead"
+#endif
+#ifdef __XC32__
+#warning "The library is not tested for XC32 compiler, use ARM-GCC compiler instead"
+#endif
+
 /*----------------------------------------------------------------------------
  *     include files
  *----------------------------------------------------------------------------*/
@@ -79,6 +86,12 @@ static void qtouch_process_buttons(void);
 qtm_control_t qtm_control;
 qtm_control_t* p_qtm_control;
 qtm_state_t qstate;
+
+/* Flag to indicate time for touch measurement */
+volatile uint8_t time_to_measure_touch_flag = 0;
+
+/* postporcess request flag */
+volatile uint8_t touch_postprocess_request = 0;
 
 /* Measurement Done Touch Flag  */
 volatile uint8_t measurement_done_touch = 0;
@@ -356,9 +369,8 @@ Notes  :
 ============================================================================*/
 static void qtm_measure_complete_callback(void)
 {
-    qtm_control.binding_layer_flags |= (1 << node_pp_request);
+    touch_postprocess_request = 1U;
 }
-
 /*============================================================================
 static void qtm_post_process_complete(void)
 ------------------------------------------------------------------------------
@@ -421,7 +433,7 @@ static void qtm_post_process_complete(void)
 static void qtm_error_callback(uint8_t error)
 ------------------------------------------------------------------------------
 Purpose: Callback function from binding layer called after the completion of
-                 post processing. This function is called only when there is error.
+         post processing. This function is called only when there is error.
 Input  : error code
 Output : decoded module error code
 Notes  :
@@ -493,20 +505,20 @@ void qtouch_process(void)
 {
     touch_ret_t touch_ret;
 
-    /* check the time_to_measure_touch flag for Touch Acquisition */
-    if (p_qtm_control->binding_layer_flags & (1U << time_to_measure_touch)) {
+    /* check the time_to_measure_touch_flag for Touch Acquisition */
+    if (time_to_measure_touch_flag == 1) {
         /* Do the acquisition */
         touch_ret = qtm_lib_start_acquisition(0);
 
         /* if the Acquistion request was successful then clear the request flag */
         if (TOUCH_SUCCESS == touch_ret) {
             /* Clear the Measure request flag */
-            p_qtm_control->binding_layer_flags &= (uint8_t) ~(1U << time_to_measure_touch);
+            time_to_measure_touch_flag = 0;
         }
     }
 
     /* check the flag for node level post processing */
-    if (p_qtm_control->binding_layer_flags & (1U << node_pp_request)) {
+    if (touch_postprocess_request == 1) {
         /* Run Acquisition moudle level post pocessing*/
         touch_ret = qtm_lib_acq_process();
 
@@ -520,10 +532,10 @@ void qtouch_process(void)
         }
 
         /* Reset the flags for node_level_post_processing */
-        p_qtm_control->binding_layer_flags &= (uint8_t) ~(1U << node_pp_request);
+        touch_postprocess_request = 0;
 
         if (p_qtm_control->binding_layer_flags & (1U << reburst_request)) {
-            p_qtm_control->binding_layer_flags |= (1U << time_to_measure_touch);
+            time_to_measure_touch_flag = 1;
             p_qtm_control->binding_layer_flags &= ~(1U << reburst_request);
         }
     }
@@ -541,7 +553,7 @@ Notes  :
 void qtouch_timer_handler(void)
 {
     /* Count complete - Measure touch sensors */
-    qtm_control.binding_layer_flags |= (1U << time_to_measure_touch);
+    time_to_measure_touch_flag = 1U;
     qtm_update_qtlib_timer(DEF_TOUCH_MEASUREMENT_PERIOD_MS);
 }
 
@@ -558,7 +570,13 @@ void qtouch_timer_config(void)
     Timer_task.cb = qtouch_timer_task_cb;
     Timer_task.mode = TIMER_TASK_REPEAT;
 
+    static uint8_t timer_task_added = 0;
+    if (timer_task_added) {
+        timer_remove_task(&TIMER_0, &Timer_task);
+    }
+
     timer_add_task(&TIMER_0, &Timer_task);
+    timer_task_added = 1;
     timer_start(&TIMER_0);
 }
 
@@ -567,9 +585,19 @@ uint16_t qtouch_get_sensor_node_signal(uint16_t sensor_node)
     return (ptc_qtlib_node_stat1[sensor_node].node_acq_signals);
 }
 
+void qtouch_update_sensor_node_signal(uint16_t sensor_node, uint16_t new_signal)
+{
+    ptc_qtlib_node_stat1[sensor_node].node_acq_signals = new_signal;
+}
+
 uint16_t qtouch_get_sensor_node_reference(uint16_t sensor_node)
 {
     return (qtlib_key_data_set1[sensor_node].channel_reference);
+}
+
+void qtouch_update_sensor_node_reference(uint16_t sensor_node, uint16_t new_reference)
+{
+    qtlib_key_data_set1[sensor_node].channel_reference = new_reference;
 }
 
 uint16_t qtouch_get_sensor_cc_val(uint16_t sensor_node)
@@ -577,9 +605,27 @@ uint16_t qtouch_get_sensor_cc_val(uint16_t sensor_node)
     return (ptc_qtlib_node_stat1[sensor_node].node_comp_caps);
 }
 
+void qtouch_update_sensor_cc_val(uint16_t sensor_node, uint16_t new_cc_value)
+{
+    ptc_qtlib_node_stat1[sensor_node].node_comp_caps = new_cc_value;
+}
+
 uint8_t qtouch_get_sensor_state(uint16_t sensor_node)
 {
     return (qtlib_key_set1.qtm_touch_key_data[sensor_node].sensor_state);
+}
+
+void qtouch_update_sensor_state(uint16_t sensor_node, uint8_t new_state)
+{
+    qtlib_key_set1.qtm_touch_key_data[sensor_node].sensor_state = new_state;
+}
+
+void qtouch_calibrate_node(uint16_t sensor_node)
+{
+    /* Calibrate Node */
+    qtm_calibrate_sensor_node(&qtlib_acq_set1, sensor_node);
+    /* Initialize key */
+    qtm_init_sensor_key(&qtlib_key_set1, sensor_node, &ptc_qtlib_node_stat1[sensor_node]);
 }
 
 /* Holds preceding unfiltered scroller positions */

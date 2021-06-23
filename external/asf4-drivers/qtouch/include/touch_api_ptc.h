@@ -5,7 +5,7 @@ Project : QTouch Modular Library
 Purpose : Includes the Module API header files based on the configured modules,
           prototypes for touch.c file and Application helper API functions
 
-This file is part of QTouch Modular Library Release 5.1 example application.
+This file is part of QTouch Modular Library Release 7.4.1 application.
 
 Important Note: This file was created using the QTouch Configurator within
                 Atmel Start and then patched.
@@ -15,7 +15,7 @@ Support: Visit http://www.microchip.com/support/hottopics.aspx
                to create MySupport case.
 
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (c) 2020 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 
@@ -47,6 +47,11 @@ uint16_t qtouch_get_sensor_node_reference(uint16_t sensor_node);
 uint16_t qtouch_get_sensor_node_signal_filtered(uint16_t sensor_node);
 uint16_t qtouch_get_sensor_cc_val(uint16_t sensor_node);
 uint8_t qtouch_get_sensor_state(uint16_t sensor_node);
+void qtouch_update_sensor_node_signal(uint16_t sensor_node, uint16_t new_signal);
+void qtouch_update_sensor_node_reference(uint16_t sensor_node, uint16_t new_reference);
+void qtouch_update_sensor_cc_val(uint16_t sensor_node, uint16_t new_cc_value);
+void qtouch_update_sensor_state(uint16_t sensor_node, uint8_t new_state);
+void qtouch_calibrate_node(uint16_t sensor_node);
 bool qtouch_is_scroller_active(uint16_t sensor_node);
 uint16_t qtouch_get_scroller_position(uint16_t sensor_node);
 

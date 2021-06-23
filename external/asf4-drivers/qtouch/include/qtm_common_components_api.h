@@ -3,9 +3,32 @@ Filename : qtm_common_components_api.h
 Project : QTouch Modular Library
 Purpose : Stucts and definitions for use within modules
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip /Atmel. All rights reserved.
-------------------------------------------------------------------------------
+Revision 1.0 - Released
+Revision 1.1 - FMEA to BIST name change
+Revision 1.2 - Maintain Backward Compatibility with FMEA to BIST name change
 ============================================================================*/
+/*
+    (c) 2020 Microchip Technology Inc. and its subsidiaries.
+
+    Subject to your compliance with these terms, you may use Microchip software and any
+    derivatives exclusively with Microchip products. It is your responsibility to comply with third party
+    license terms applicable to your use of third party software (including open source software) that
+    may accompany Microchip software.
+
+    THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES, WHETHER
+    EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE, INCLUDING ANY
+    IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS
+    FOR A PARTICULAR PURPOSE.
+
+    IN NO EVENT WILL MICROCHIP BE LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE,
+    INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND
+    WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP
+    HAS BEEN ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE. TO
+    THE FULLEST EXTENT ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL
+    CLAIMS IN ANY WAY RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT
+    OF FEES, IF ANY, THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS
+    SOFTWARE.
+*/
 
 #ifndef __QTM_API_COMMON_INC__
 #define __QTM_API_COMMON_INC__
@@ -16,7 +39,7 @@ Copyright (c) 2017 Microchip /Atmel. All rights reserved.
 /* ---------------------------------------------------------------------------------------- */
 /* Version Information */
 /* ---------------------------------------------------------------------------------------- */
-#define COMMON_COMPONENTS_VERSION 0x11
+#define COMMON_COMPONENTS_VERSION 0x12
 
 /* ---------------------------------------------------------------------------------------- */
 /* Acquisition type */
@@ -24,6 +47,7 @@ Copyright (c) 2017 Microchip /Atmel. All rights reserved.
 /* Acquisition set config */
 #define NODE_SELFCAP 0x80u
 #define NODE_SELFCAP_SHIELD 0x81u
+#define NODE_SELFCAP_SHIELD_2L 0x82u
 #define NODE_MUTUAL 0x40u
 #define NODE_MUTUAL_4P 0x41u
 #define NODE_MUTUAL_8P 0x42u
@@ -44,11 +68,11 @@ typedef enum tag_touch_ret_t {
 	/* Operation not allowed in the current state of the library module. */
 	TOUCH_INVALID_LIB_STATE = 3u,
 
-	/* Successful completion of BIST.*/
-	TOUCH_BIST_SUCCESS = 4u,
+	/* Successful completion of FMEA.*/
+	TOUCH_FMEA_SUCCESS = 4u,
 
-	/* Error in BIST Module. */
-	TOUCH_BIST_ERROR = 5u,
+	/* Error in FMEA Module. */
+	TOUCH_FMEA_ERROR = 5u,
 
 	/* MAGIC number used to Program Counter checking. */
 	TOUCH_PC_FUNC_MAGIC_NO_1 = 6u,
@@ -75,7 +99,13 @@ typedef enum tag_touch_ret_t {
 	TOUCH_LIB_UNSAFE = 13u,
 
 	/* Library Is Unable to Calibrate Node */
-	TOUCH_LIB_NODE_CAL_ERROR = 14u
+	TOUCH_LIB_NODE_CAL_ERROR = 14u,
+
+	/* Successful completion of BIST.*/
+	TOUCH_BIST_SUCCESS = 15u,
+
+	/* Error in BIST Module. */
+	TOUCH_BIST_ERROR = 16u,
 
 } touch_ret_t;
 

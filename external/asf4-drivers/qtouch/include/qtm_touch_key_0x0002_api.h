@@ -3,7 +3,7 @@ Filename : qtm_touch_key_api.h
 Project : QTouch Modular Library
 Purpose : Structs and definitions for use within modules
 ------------------------------------------------------------------------------
-Copyright (c) 2017 Microchip. All rights reserved.
+Copyright (c) 2019 Microchip. All rights reserved.
 ------------------------------------------------------------------------------
 ============================================================================*/
 
