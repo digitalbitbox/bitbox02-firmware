@@ -19,7 +19,7 @@
 
 #include "mock_qtouch.h"
 
-volatile uint8_t measurement_done_touch = 1;
+volatile bool measurement_done_touch = true;
 
 uint8_t qtouch_is_scroller_active(uint16_t sensor_node)
 {

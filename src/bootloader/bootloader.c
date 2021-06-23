@@ -86,7 +86,7 @@
 #define OP_STATUS_ERR_UNLOCK ((uint8_t)'U')
 #define OP_STATUS_ERR_LOCK ((uint8_t)'K')
 
-extern volatile uint8_t measurement_done_touch;
+extern volatile bool measurement_done_touch;
 
 COMPILER_ALIGNED(128)
 static struct sha_context _pukcc_sha256_context;
@@ -158,12 +158,12 @@ typedef union {
 #error "incompatible bootloader data macro"
 #endif
 
-static uint8_t _loading_ready = 0;
+static bool _loading_ready = false;
 static uint8_t _firmware_num_chunks = 0;
 // Indicates whether the whole app flash contains only 0xFF.
 // This controls bootloader text messages on the screen.
 // The value is computed at bootloader enter.
-static uint8_t _is_app_flash_empty = 0;
+static bool _is_app_flash_empty = false;
 
 // A "bare" firmware hash where all app flash sections are empty.
 // Bare meaning the hash is computed in the same way as _firmware_hash except
@@ -443,7 +443,7 @@ static void _compute_is_app_flash_empty(void)
     sha_sync_sha256_update(&HASH_ALGORITHM_0, (const uint8_t*)FLASH_APP_START, FLASH_APP_LEN);
     sha_sync_sha256_finish(&HASH_ALGORITHM_0, hash);
     pukcc_sha256_compute(hash, SHA256_DIGEST_LENGTH, hash);
-    _is_app_flash_empty = MEMEQ(hash, _empty_bare_flash_hash, sizeof(_empty_bare_flash_hash));
+    _is_app_flash_empty = MEMEQ(hash, _empty_bare_flash_hash, sizeof(_empty_bare_flash_hash)) == 0;
 }
 
 static size_t _report_status(uint8_t status, uint8_t* output)
@@ -457,7 +457,7 @@ static size_t _api_write_chunk(const uint8_t* buf, uint8_t chunknum, uint8_t* ou
     if (!_loading_ready) {
         return _report_status(OP_STATUS_ERR_LOAD_FLAG, output);
     }
-    _loading_ready = 0;
+    _loading_ready = false;
 
     if (BOOT_OP_LEN + FIRMWARE_CHUNK_LEN > USB_DATA_MAX_LEN) {
         return _report_status(OP_STATUS_ERR_MACRO, output);
@@ -473,7 +473,7 @@ static size_t _api_write_chunk(const uint8_t* buf, uint8_t chunknum, uint8_t* ou
             (const void*)(FLASH_APP_START + (chunknum * FIRMWARE_CHUNK_LEN)),
             buf,
             FIRMWARE_CHUNK_LEN)) {
-        _loading_ready = 1;
+        _loading_ready = true;
         return _report_status(OP_STATUS_OK, output);
     }
 
@@ -494,7 +494,7 @@ static size_t _api_write_chunk(const uint8_t* buf, uint8_t chunknum, uint8_t* ou
     }
 
     size_t len = _report_status(OP_STATUS_OK, output);
-    _loading_ready = 1;
+    _loading_ready = true;
     return len;
 }
 
@@ -513,7 +513,7 @@ static size_t _api_firmware_erase(uint8_t firmware_num_chunks, uint8_t* output)
     if (firmware_num_chunks > 0) {
         _render_progress(0);
     }
-    _loading_ready = 0;
+    _loading_ready = false;
     for (uint32_t i = 0; i < (uint32_t)FLASH_APP_PAGE_NUM; i += FLASH_REGION_PAGE_NUM) {
         if (flash_unlock(&FLASH_0, FLASH_APP_START + i * FLASH_PAGE_SIZE, FLASH_REGION_PAGE_NUM) !=
             FLASH_REGION_PAGE_NUM) {
@@ -538,7 +538,7 @@ static size_t _api_firmware_erase(uint8_t firmware_num_chunks, uint8_t* output)
     }
     if (firmware_num_chunks > 0) {
         _firmware_num_chunks = firmware_num_chunks;
-        _loading_ready = 1;
+        _loading_ready = true;
     }
     return _report_status(OP_STATUS_OK, output);
 }
@@ -888,7 +888,7 @@ static size_t _api_command(const uint8_t* input, uint8_t* output, const size_t m
         break;
     default:
         len = _report_status(OP_STATUS_ERR_INVALID_CMD, output);
-        _loading_ready = 0;
+        _loading_ready = false;
         char msg[100];
         snprintf(msg, 100, "Command: %u unknown", input[0]);
         _render_message(msg, 1000);

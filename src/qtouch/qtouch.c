@@ -81,7 +81,7 @@ qtm_control_t* p_qtm_control;
 qtm_state_t qstate;
 
 /* Measurement Done Touch Flag  */
-volatile uint8_t measurement_done_touch = 0;
+volatile bool measurement_done_touch = false;
 
 /* Error Handling */
 uint8_t module_error_code = 0;
@@ -395,7 +395,7 @@ static void qtm_post_process_complete(void)
         if (counter == 30 && !measurement_done_touch) {
             for (uint16_t i = 0; i < DEF_NUM_SENSORS; i++) {
                 if (qtouch_get_sensor_node_reference(i) == 0) {
-                    measurement_done_touch = 1;
+                    measurement_done_touch = true;
                     break;
                 }
             }
@@ -406,7 +406,7 @@ static void qtm_post_process_complete(void)
     if ((0U != (qtlib_key_set1.qtm_touch_key_group_data->qtm_keys_status & 0x80U))) {
         p_qtm_control->binding_layer_flags |= (1U << reburst_request);
     } else {
-        measurement_done_touch = 1;
+        measurement_done_touch = true;
     }
 
     if (measurement_done_touch) {
