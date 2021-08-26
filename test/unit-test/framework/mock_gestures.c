@@ -63,6 +63,9 @@ void mock_gestures_touch(slider_location_t location, uint8_t screen_position)
         gestures_detect(gestures_history_reset, true);
         gestures_history_reset = false;
     }
+    for (int i = 0; i < 100; ++i) {
+        SysTick_Handler();
+    }
 }
 
 /**
@@ -75,6 +78,9 @@ void mock_gestures_touch_release(void)
     }
     gestures_detect(gestures_history_reset, true);
     gestures_history_reset = false;
+    for (int i = 0; i < 100; ++i) {
+        SysTick_Handler();
+    }
 }
 
 /**
@@ -83,4 +89,7 @@ void mock_gestures_touch_release(void)
 void mock_gestures_touch_init(void)
 {
     gestures_history_reset = true;
+    for (int i = 0; i < 100; ++i) {
+        SysTick_Handler();
+    }
 }
