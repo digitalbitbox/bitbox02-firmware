@@ -19,7 +19,7 @@
 
 #include <hww.h>
 #include <platform_config.h>
-#include <ui/components/info_centered.h>
+#include <ui/components/lockscreen.h>
 #include <ui/components/waiting.h>
 #include <ui/screen_stack.h>
 #include <ui/ugui/ugui.h>
@@ -34,7 +34,7 @@
 static void _init_communication(void)
 {
     usb_start(hww_setup);
-    ui_screen_stack_push(info_centered_create("See the BitBoxApp", NULL));
+    ui_screen_stack_push(lockscreen_create());
 }
 
 void idle_workflow_blocking(void)

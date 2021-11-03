@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include "info_centered.h"
-#include "../event.h"
+#include "../ui_util.h"
 #include "button.h"
 #include "label.h"
 
 #include <hardfault.h>
 #include <screen.h>
-#include <touch/gestures.h>
 
 #include <string.h>
 
