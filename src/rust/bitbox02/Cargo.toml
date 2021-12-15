@@ -28,7 +28,7 @@ lazy_static = { version = "1.4.0", optional = true }
 
 [features]
 # Only to be enabled in unit tests.
-testing = ["lazy_static"]
+testing = ["lazy_static", "bitbox02-sys/testing"]
 
 app-ethereum = []
 app-bitcoin = []

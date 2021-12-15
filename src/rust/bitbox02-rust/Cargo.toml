@@ -92,3 +92,5 @@ app-cardano = [
   # enable these features
   "ed25519"
 ]
+
+testing = ["bitbox02/testing"]

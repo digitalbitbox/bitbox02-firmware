@@ -35,3 +35,15 @@ The bottom-most layer are bindings generated from C header files:
 
 We generate one header file `rust.h` and ever product specific function is `#ifdeffed` with
 `RUST_PRODUCT_*` macro.
+
+
+# rust-analyzer / clippy
+
+If you can run the following on your dev machine you should be able to use rust analyzer and cargo
+clippy in the rust projects.
+
+```
+cmake build-build && cd build-build && make rust-bindgen-includes
+```
+
+See the Dockerfile for necessary dependencies.

@@ -1,1 +1,2 @@
-/py/bitbox02/bitbox02/generated/* linguist-generated=true
+/py/bitbox02/bitbox02/generated/** linguist-generated=true
+/src/rust/vendor/** linguist-generated=true

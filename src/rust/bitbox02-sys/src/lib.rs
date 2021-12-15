@@ -19,9 +19,7 @@
 #![allow(non_snake_case)]
 // Can be removed once https://github.com/rust-lang/rust-bindgen/issues/1651 is resolved.
 #![allow(deref_nullptr)]
+#![allow(clippy::all)]
+
 // include our generated bindings
-include!(concat!(
-    env!("CMAKE_CURRENT_BINARY_DIR"),
-    "/rust",
-    "/bindings.rs"
-));
+include!(env!("BINDINGS"));
