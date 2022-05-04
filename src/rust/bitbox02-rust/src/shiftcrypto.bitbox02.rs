@@ -5,6 +5,8 @@ pub struct PubResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RootFingerprintRequest {
+    #[prost(bool, tag="1")]
+    pub display: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RootFingerprintResponse {

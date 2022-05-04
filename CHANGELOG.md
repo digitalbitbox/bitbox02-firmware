@@ -7,6 +7,7 @@ customers cannot upgrade their bootloader, its changes are recorded separately.
 ## Firmware
 
 ### [Unreleased]
+- Add ability to display the root fingerprint on the device
 
 ### 9.10.0 [2022-03-10]
 - Bitcoin: add support for BIP-86: receive to taproot addresses and sign transactions with taproot inputs

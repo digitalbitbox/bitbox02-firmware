@@ -656,13 +656,13 @@ class BitBox02(BitBoxCommonAPI):
         )
         self._msg_query(request, expected_response="success")
 
-    def root_fingerprint(self) -> bytes:
+    def root_fingerprint(self, display: bool = False) -> bytes:
         """
-        Get the root fingerprint from the bitbox02
+        Get the root fingerprint from the bitbox02. If `display` is `True`, the fingerprint is displayed on the device before returning (only from firmware v9.11.0).
         """
         # pylint: disable=no-member
         request = hww.Request()
-        request.fingerprint.CopyFrom(common.RootFingerprintRequest())
+        request.fingerprint.CopyFrom(common.RootFingerprintRequest(display=display))
         response = self._msg_query(request, expected_response="fingerprint")
         return response.fingerprint.fingerprint
 

@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common.proto',
   package='shiftcrypto.bitbox02',
   syntax='proto3',
-  serialized_pb=_b('\n\x0c\x63ommon.proto\x12\x14shiftcrypto.bitbox02\"\x1a\n\x0bPubResponse\x12\x0b\n\x03pub\x18\x01 \x01(\t\"\x18\n\x16RootFingerprintRequest\".\n\x17RootFingerprintResponse\x12\x13\n\x0b\x66ingerprint\x18\x01 \x01(\x0c\"l\n\x04XPub\x12\r\n\x05\x64\x65pth\x18\x01 \x01(\x0c\x12\x1a\n\x12parent_fingerprint\x18\x02 \x01(\x0c\x12\x11\n\tchild_num\x18\x03 \x01(\r\x12\x12\n\nchain_code\x18\x04 \x01(\x0c\x12\x12\n\npublic_key\x18\x05 \x01(\x0c\"\x1a\n\x07Keypath\x12\x0f\n\x07keypath\x18\x01 \x03(\rb\x06proto3')
+  serialized_pb=_b('\n\x0c\x63ommon.proto\x12\x14shiftcrypto.bitbox02\"\x1a\n\x0bPubResponse\x12\x0b\n\x03pub\x18\x01 \x01(\t\")\n\x16RootFingerprintRequest\x12\x0f\n\x07\x64isplay\x18\x01 \x01(\x08\".\n\x17RootFingerprintResponse\x12\x13\n\x0b\x66ingerprint\x18\x01 \x01(\x0c\"l\n\x04XPub\x12\r\n\x05\x64\x65pth\x18\x01 \x01(\x0c\x12\x1a\n\x12parent_fingerprint\x18\x02 \x01(\x0c\x12\x11\n\tchild_num\x18\x03 \x01(\r\x12\x12\n\nchain_code\x18\x04 \x01(\x0c\x12\x12\n\npublic_key\x18\x05 \x01(\x0c\"\x1a\n\x07Keypath\x12\x0f\n\x07keypath\x18\x01 \x03(\rb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -64,6 +64,13 @@ _ROOTFINGERPRINTREQUEST = _descriptor.Descriptor(
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='display', full_name='shiftcrypto.bitbox02.RootFingerprintRequest.display', index=0,
+      number=1, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -77,7 +84,7 @@ _ROOTFINGERPRINTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=66,
-  serialized_end=90,
+  serialized_end=107,
 )
 
 
@@ -107,8 +114,8 @@ _ROOTFINGERPRINTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=92,
-  serialized_end=138,
+  serialized_start=109,
+  serialized_end=155,
 )
 
 
@@ -166,8 +173,8 @@ _XPUB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=140,
-  serialized_end=248,
+  serialized_start=157,
+  serialized_end=265,
 )
 
 
@@ -197,8 +204,8 @@ _KEYPATH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=250,
-  serialized_end=276,
+  serialized_start=267,
+  serialized_end=293,
 )
 
 DESCRIPTOR.message_types_by_name['PubResponse'] = _PUBRESPONSE

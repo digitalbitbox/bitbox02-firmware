@@ -153,7 +153,7 @@ async fn process_api(request: &Request) -> Option<Result<Response, Error>> {
         #[cfg(not(feature = "app-ethereum"))]
         Request::Eth(_) => Some(Err(Error::Disabled)),
 
-        Request::Fingerprint(pb::RootFingerprintRequest {}) => Some(rootfingerprint::process()),
+        Request::Fingerprint(ref request) => Some(rootfingerprint::process(request).await),
         request @ Request::BtcPub(_)
         | request @ Request::Btc(_)
         | request @ Request::BtcSignInit(_) => process_api_btc(request).await,

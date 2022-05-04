@@ -275,6 +275,7 @@ class SendMessage:
 
     def _get_root_fingerprint(self) -> None:
         print(f"Root fingerprint: {self._device.root_fingerprint().hex()}")
+        self._device.root_fingerprint(display=True)
 
     def _display_zpub(self) -> None:
         try:

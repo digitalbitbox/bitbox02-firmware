@@ -24,8 +24,13 @@ global___PubResponse = PubResponse
 
 class RootFingerprintRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor = ...
+    DISPLAY_FIELD_NUMBER: builtins.int
+    display: builtins.bool = ...
     def __init__(self,
+        *,
+        display : builtins.bool = ...,
         ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["display",b"display"]) -> None: ...
 global___RootFingerprintRequest = RootFingerprintRequest
 
 class RootFingerprintResponse(google.protobuf.message.Message):

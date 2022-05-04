@@ -20,6 +20,7 @@ message PubResponse {
 }
 
 message RootFingerprintRequest {
+  bool display = 1;
 }
 
 message RootFingerprintResponse {
