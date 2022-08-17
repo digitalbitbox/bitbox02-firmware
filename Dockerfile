@@ -130,8 +130,10 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | CARGO_HOME=/opt/
 RUN rustup target add thumbv7em-none-eabi
 RUN rustup component add rustfmt
 RUN rustup component add clippy
+RUN rustup component add rust-src
 RUN CARGO_HOME=/opt/cargo cargo install cbindgen --version 0.23.0
 RUN CARGO_HOME=/opt/cargo cargo install bindgen --version 0.59.2
+RUN git clone -b 2022-08-08 https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer && CARGO_HOME=/opt/cargo cargo xtask install --server
 
 COPY tools/prost-build prost-build
 RUN CARGO_HOME=/opt/cargo cargo install --path prost-build --locked
