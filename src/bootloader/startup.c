@@ -32,7 +32,8 @@ void __attribute__((noreturn)) __stack_chk_fail(void)
     } // satisfy noreturn
 }
 
-uint32_t __stack_chk_guard = 0;
+// uint32_t __stack_chk_guard = 0;
+extern uint32_t __stack_chk_guard;
 
 int main(void)
 {
