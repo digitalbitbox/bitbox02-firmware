@@ -56,6 +56,7 @@ message ETHSignRequest {
   AntiKleptoHostNonceCommitment host_nonce_commitment = 9;
   // If non-zero, `coin` is ignored and `chain_id` is used to identify the network.
   uint64 chain_id = 10;
+  string address = 11;
 }
 
 // TX payload for an EIP-1559 (type 2) transaction: https://eips.ethereum.org/EIPS/eip-1559
@@ -70,6 +71,7 @@ message ETHSignEIP1559Request {
   bytes value = 8; // smallest big endian serialization, max. 32 bytes
   bytes data = 9;
   AntiKleptoHostNonceCommitment host_nonce_commitment = 10;
+  string address = 11;
 }
 
 message ETHSignMessageRequest {
