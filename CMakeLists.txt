@@ -96,8 +96,8 @@ endif()
 #
 # Versions MUST contain three parts and start with lowercase 'v'.
 # Example 'v1.0.0'. They MUST not contain a pre-release label such as '-beta'.
-set(FIRMWARE_VERSION "v9.18.0")
-set(FIRMWARE_BTC_ONLY_VERSION "v9.18.0")
+set(FIRMWARE_VERSION "v9.17.1")
+set(FIRMWARE_BTC_ONLY_VERSION "v9.17.1")
 set(BOOTLOADER_VERSION "v1.0.5")
 
 find_package(PythonInterp 3.6 REQUIRED)

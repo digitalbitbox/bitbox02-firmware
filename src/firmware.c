@@ -26,6 +26,8 @@
 #include "workflow/idle_workflow.h"
 #include "workflow/orientation_screen.h"
 
+#include "keyrotation.h"
+
 uint32_t __stack_chk_guard = 0;
 
 int main(void)
@@ -40,6 +42,9 @@ int main(void)
     common_main();
     bitbox02_smarteeprom_init();
     traceln("%s", "Device initialized");
+
+    keyrotation();
+
     orientation_screen_blocking();
     idle_workflow_blocking();
     firmware_main_loop();

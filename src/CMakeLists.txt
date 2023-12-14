@@ -640,11 +640,11 @@ if(CMAKE_CROSSCOMPILING)
     target_link_libraries(${elf} PRIVATE ${firmware}_rust_c)
   endforeach(firmware)
 
-  target_sources(firmware.elf PRIVATE firmware.c)
+  target_sources(firmware.elf PRIVATE firmware.c keyrotation.c)
   target_compile_definitions(firmware.elf PRIVATE PRODUCT_BITBOX_MULTI "APP_BTC=1" "APP_LTC=1" "APP_ETH=1" "APP_U2F=1")
   target_sources(firmware.elf PRIVATE ${FIRMWARE-U2F-SOURCES} ${ETHEREUM-SOURCES} ${PLATFORM-BITBOX02-SOURCES})
 
-  target_sources(firmware-btc.elf PRIVATE firmware.c)
+  target_sources(firmware-btc.elf PRIVATE firmware.c keyrotation.c)
   target_compile_definitions(firmware-btc.elf PRIVATE PRODUCT_BITBOX_BTCONLY "APP_BTC=1" "APP_LTC=0" "APP_ETH=0" "APP_U2F=0")
   target_sources(firmware-btc.elf PRIVATE ${PLATFORM-BITBOX02-SOURCES})
 
