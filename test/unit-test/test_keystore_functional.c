@@ -19,11 +19,11 @@
 
 #include <keystore.h>
 
+#include <atecc/atecc.h>
 #include <memory/bitbox02_smarteeprom.h>
 #include <memory/smarteeprom.h>
 #include <mock_memory.h>
 #include <rust/rust.h>
-#include <securechip/securechip.h>
 #include <util.h>
 
 #include <wally_crypto.h>

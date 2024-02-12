@@ -15,9 +15,9 @@
 #include <stdio.h>
 #include <string.h>
 #ifndef TESTING
+#include "atecc/atecc.h"
 #include "driver_init.h"
 #include "flags.h"
-#include "securechip/securechip.h"
 #include <hal_rand_sync.h>
 #endif
 #include "hardfault.h"

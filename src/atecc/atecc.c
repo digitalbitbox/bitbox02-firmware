@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "securechip.h"
+#include "atecc.h"
 #include "hardfault.h"
 #include <i2c_ecc.h>
 #include <util.h>

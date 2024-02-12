@@ -17,12 +17,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <atecc/atecc.h>
 #include <hardfault.h>
 #include <keystore.h>
 #include <memory/memory.h>
 #include <random.h>
 #include <rust/rust.h>
-#include <securechip/securechip.h>
 #include <ui/component.h>
 #include <ui/components/confirm.h>
 #include <ui/components/info_centered.h>

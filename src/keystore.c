@@ -14,6 +14,7 @@
 
 #include <string.h>
 
+#include "atecc/atecc.h"
 #include "cipher/cipher.h"
 #include "hardfault.h"
 #include "keystore.h"
@@ -22,7 +23,6 @@
 #include "random.h"
 #include "reset.h"
 #include "salt.h"
-#include "securechip/securechip.h"
 #include "util.h"
 
 #include <rust/rust.h>

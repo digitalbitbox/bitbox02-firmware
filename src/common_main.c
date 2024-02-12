@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "common_main.h"
+#include "atecc/atecc.h"
 #include "driver_init.h"
 #include "flags.h"
 #include "hardfault.h"
@@ -22,7 +23,6 @@
 #include "memory/smarteeprom.h"
 #include "random.h"
 #include "screen.h"
-#include "securechip/securechip.h"
 #include "util.h"
 #include <wally_core.h>
 
