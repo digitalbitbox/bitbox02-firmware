@@ -600,9 +600,14 @@ if(CMAKE_CROSSCOMPILING)
   foreach(firmware ${FIRMWARES})
     set(elf ${firmware}.elf)
     add_executable(${elf} ${FIRMWARE-SOURCES})
+    add_dependencies(${elf} mbedtls-project)
     # Must manually link against C so that malloc can find _sbrk
     target_link_libraries(${elf}
       PRIVATE
+        mbedtls
+        mbedx509
+        mbedcrypto
+        optiga
         cryptoauthlib
         fatfs
         ctaes
