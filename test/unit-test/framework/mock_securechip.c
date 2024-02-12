@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include <atecc/atecc.h>
+#include <securechip/securechip.h>
 #include <stdio.h>
 #include <string.h>
 #include <wally_crypto.h>
@@ -105,6 +105,6 @@ bool securechip_monotonic_increments_remaining(uint32_t* remaining_out)
 
 bool securechip_model(securechip_model_t* model_out)
 {
-    *model_out = SECURECHIP_ATECC608B;
+    *model_out = ATECC_ATECC608B;
     return true;
 }

@@ -27,8 +27,8 @@ pub fn process() -> Result<Response, Error> {
         mnemonic_passphrase_enabled: memory::is_mnemonic_passphrase_enabled(),
         monotonic_increments_remaining: securechip::monotonic_increments_remaining()?,
         securechip_model: match securechip::model()? {
-            securechip::Model::SECURECHIP_ATECC608A => "ATECC608A".into(),
-            securechip::Model::SECURECHIP_ATECC608B => "ATECC608B".into(),
+            securechip::Model::ATECC_ATECC608A => "ATECC608A".into(),
+            securechip::Model::ATECC_ATECC608B => "ATECC608B".into(),
         },
     }))
 }

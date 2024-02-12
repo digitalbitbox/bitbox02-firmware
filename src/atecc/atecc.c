@@ -14,6 +14,7 @@
 
 #include "atecc.h"
 #include "hardfault.h"
+#include "securechip/securechip.h"
 #include <i2c_ecc.h>
 #include <util.h>
 
@@ -27,16 +28,16 @@
 #pragma GCC diagnostic pop
 
 typedef enum {
-    SECURECHIP_SLOT_IO_PROTECTION_KEY = 0,
-    SECURECHIP_SLOT_AUTHKEY = 1,
-    SECURECHIP_SLOT_ENCRYPTION_KEY = 2,
-    SECURECHIP_SLOT_ROLLKEY = 3,
-    SECURECHIP_SLOT_KDF = 4,
-    SECURECHIP_SLOT_ATTESTATION = 5,
-    SECURECHIP_SLOT_ECC_UNSAFE_SIGN = 6,
-    SECURECHIP_SLOT_DATA0 = 9,
+    ATECC_SLOT_IO_PROTECTION_KEY = 0,
+    ATECC_SLOT_AUTHKEY = 1,
+    ATECC_SLOT_ENCRYPTION_KEY = 2,
+    ATECC_SLOT_ROLLKEY = 3,
+    ATECC_SLOT_KDF = 4,
+    ATECC_SLOT_ATTESTATION = 5,
+    ATECC_SLOT_ECC_UNSAFE_SIGN = 6,
+    ATECC_SLOT_DATA0 = 9,
     // The other slots are currently not in use.
-} securechip_slot_t;
+} atecc_slot_t;
 
 // Chip Configuration, generated with "make generate-atecc608-config"
 // The first 16 bytes, as well as the LockValue/LockConfig can't be changed and are ignored when
@@ -216,7 +217,7 @@ static ATCAIfaceCfg cfg = {
  * Individually locks a slot. Used to lock the io protection and auth key so
  * they can never change.
  */
-static ATCA_STATUS _lock_slot(securechip_slot_t slot)
+static ATCA_STATUS _lock_slot(atecc_slot_t slot)
 {
     bool is_locked = false;
     ATCA_STATUS result = atcab_is_slot_locked(slot, &is_locked);
@@ -232,7 +233,7 @@ static ATCA_STATUS _lock_slot(securechip_slot_t slot)
 static ATCA_STATUS _factory_setup(void)
 {
     if (_interface_functions == NULL) {
-        return SC_ERR_IFS;
+        return ATECC_ERR_IFS;
     }
     bool is_config_locked = false;
     ATCA_STATUS result = atcab_is_locked(LOCK_ZONE_CONFIG, &is_config_locked);
@@ -278,7 +279,7 @@ static ATCA_STATUS _factory_setup(void)
         UTIL_CLEANUP_32(io_protection_key);
         _interface_functions->get_io_protection_key(io_protection_key);
         result = atcab_write_zone(
-            ATCA_ZONE_DATA, SECURECHIP_SLOT_IO_PROTECTION_KEY, 0, 0, io_protection_key, 32);
+            ATCA_ZONE_DATA, ATECC_SLOT_IO_PROTECTION_KEY, 0, 0, io_protection_key, 32);
         if (result != ATCA_SUCCESS) {
             return result;
         }
@@ -286,7 +287,7 @@ static ATCA_STATUS _factory_setup(void)
         uint8_t auth_key[32] = {0};
         UTIL_CLEANUP_32(auth_key);
         _interface_functions->get_auth_key(auth_key);
-        result = atcab_write_zone(ATCA_ZONE_DATA, SECURECHIP_SLOT_AUTHKEY, 0, 0, auth_key, 32);
+        result = atcab_write_zone(ATCA_ZONE_DATA, ATECC_SLOT_AUTHKEY, 0, 0, auth_key, 32);
         if (result != ATCA_SUCCESS) {
             return result;
         }
@@ -294,8 +295,8 @@ static ATCA_STATUS _factory_setup(void)
         uint8_t encryption_key[32] = {0};
         UTIL_CLEANUP_32(encryption_key);
         _interface_functions->get_encryption_key(encryption_key);
-        result = atcab_write_zone(
-            ATCA_ZONE_DATA, SECURECHIP_SLOT_ENCRYPTION_KEY, 0, 0, encryption_key, 32);
+        result =
+            atcab_write_zone(ATCA_ZONE_DATA, ATECC_SLOT_ENCRYPTION_KEY, 0, 0, encryption_key, 32);
         if (result != ATCA_SUCCESS) {
             return result;
         }
@@ -306,15 +307,15 @@ static ATCA_STATUS _factory_setup(void)
         is_data_locked = true;
     }
     if (is_config_locked && is_data_locked) {
-        result = _lock_slot(SECURECHIP_SLOT_IO_PROTECTION_KEY);
+        result = _lock_slot(ATECC_SLOT_IO_PROTECTION_KEY);
         if (result != ATCA_SUCCESS) {
             return result;
         }
-        result = _lock_slot(SECURECHIP_SLOT_AUTHKEY);
+        result = _lock_slot(ATECC_SLOT_AUTHKEY);
         if (result != ATCA_SUCCESS) {
             return result;
         }
-        result = _lock_slot(SECURECHIP_SLOT_ENCRYPTION_KEY);
+        result = _lock_slot(ATECC_SLOT_ENCRYPTION_KEY);
         if (result != ATCA_SUCCESS) {
             return result;
         }
@@ -334,14 +335,14 @@ static int _verify_config(void)
         return result;
     }
     if (!is_locked) {
-        return SC_ERR_ZONE_UNLOCKED_CONFIG;
+        return ATECC_ERR_ZONE_UNLOCKED_CONFIG;
     }
     result = atcab_is_locked(LOCK_ZONE_DATA, &is_locked);
     if (result != ATCA_SUCCESS) {
         return result;
     }
     if (!is_locked) {
-        return SC_ERR_ZONE_UNLOCKED_DATA;
+        return ATECC_ERR_ZONE_UNLOCKED_DATA;
     }
 
     bool same_config = false;
@@ -350,38 +351,38 @@ static int _verify_config(void)
         return result;
     }
     if (!same_config) {
-        return SC_ERR_CONFIG_MISMATCH;
+        return ATECC_ERR_CONFIG_MISMATCH;
     }
 
     // Check that the slots are individually locked.
-    result = atcab_is_slot_locked(SECURECHIP_SLOT_IO_PROTECTION_KEY, &is_locked);
+    result = atcab_is_slot_locked(ATECC_SLOT_IO_PROTECTION_KEY, &is_locked);
     if (result != ATCA_SUCCESS) {
         return result;
     }
     if (!is_locked) {
-        return SC_ERR_SLOT_UNLOCKED_IO;
+        return ATECC_ERR_SLOT_UNLOCKED_IO;
     }
-    result = atcab_is_slot_locked(SECURECHIP_SLOT_AUTHKEY, &is_locked);
+    result = atcab_is_slot_locked(ATECC_SLOT_AUTHKEY, &is_locked);
     if (result != ATCA_SUCCESS) {
         return result;
     }
     if (!is_locked) {
-        return SC_ERR_SLOT_UNLOCKED_AUTH;
+        return ATECC_ERR_SLOT_UNLOCKED_AUTH;
     }
-    result = atcab_is_slot_locked(SECURECHIP_SLOT_ENCRYPTION_KEY, &is_locked);
+    result = atcab_is_slot_locked(ATECC_SLOT_ENCRYPTION_KEY, &is_locked);
     if (result != ATCA_SUCCESS) {
         return result;
     }
     if (!is_locked) {
-        return SC_ERR_SLOT_UNLOCKED_ENC;
+        return ATECC_ERR_SLOT_UNLOCKED_ENC;
     }
     return ATCA_SUCCESS;
 }
 
-int securechip_setup(const securechip_interface_functions_t* ifs)
+int atecc_setup(const securechip_interface_functions_t* ifs)
 {
     if (ifs == NULL) {
-        return SC_ERR_IFS;
+        return ATECC_ERR_IFS;
     }
     _interface_functions = ifs;
     ATCA_STATUS result = atcab_init(&cfg);
@@ -400,9 +401,9 @@ int securechip_setup(const securechip_interface_functions_t* ifs)
 }
 
 /**
- * This performs the CheckMac command on SECURECHIP_SLOT_AUTHKEY. This needs to
+ * This performs the CheckMac command on ATECC_SLOT_AUTHKEY. This needs to
  * be called before using any slot requiring auth and whose KeyConfig.AuthKey is
- * SECURECHIP_SLOT_AUTHKEY.
+ * ATECC_SLOT_AUTHKEY.
  */
 static ATCA_STATUS _authorize_key(void)
 {
@@ -442,7 +443,7 @@ static ATCA_STATUS _authorize_key(void)
     atca_check_mac_in_out_t checkmac_params = {
         // First SHA block from slot key, Second SHA block from TempKey.
         .mode = CHECKMAC_MODE_BLOCK2_TEMPKEY,
-        .key_id = SECURECHIP_SLOT_AUTHKEY,
+        .key_id = ATECC_SLOT_AUTHKEY,
         .sn = sn,
         .client_chal = NULL, // unused in this mode
         .client_resp = response,
@@ -467,7 +468,7 @@ static ATCA_STATUS _authorize_key(void)
 }
 
 /**
- * Performs a roll-key operation on a SECURECHIP_SLOT_ROLLKEY.
+ * Performs a roll-key operation on a ATECC_SLOT_ROLLKEY.
  * @return ATCA_SUCCESS on success.
  */
 static ATCA_STATUS _rollkey(void)
@@ -482,11 +483,11 @@ static ATCA_STATUS _rollkey(void)
     if (result != ATCA_SUCCESS) {
         return result;
     }
-    return atcab_derivekey(0, SECURECHIP_SLOT_ROLLKEY, NULL);
+    return atcab_derivekey(0, ATECC_SLOT_ROLLKEY, NULL);
 }
 
 /**
- * Writes a new random key to SECURECHIP_SLOT_KDF.
+ * Writes a new random key to ATECC_SLOT_KDF.
  * @return ATCA_SUCCESS on success.
  */
 static ATCA_STATUS _update_kdf_key(void)
@@ -511,15 +512,10 @@ static ATCA_STATUS _update_kdf_key(void)
     }
 
     return atcab_write_enc(
-        SECURECHIP_SLOT_KDF,
-        0,
-        new_key,
-        encryption_key,
-        SECURECHIP_SLOT_ENCRYPTION_KEY,
-        nonce_contribution);
+        ATECC_SLOT_KDF, 0, new_key, encryption_key, ATECC_SLOT_ENCRYPTION_KEY, nonce_contribution);
 }
 
-bool securechip_update_keys(void)
+bool atecc_update_keys(void)
 {
     if (_rollkey() != ATCA_SUCCESS) {
         return false;
@@ -527,13 +523,13 @@ bool securechip_update_keys(void)
     return _update_kdf_key() == ATCA_SUCCESS;
 }
 
-static int _securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
+static int _atecc_kdf(atecc_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
 {
-    if (len > 127 || (slot != SECURECHIP_SLOT_ROLLKEY && slot != SECURECHIP_SLOT_KDF)) {
-        return SC_ERR_INVALID_ARGS;
+    if (len > 127 || (slot != ATECC_SLOT_ROLLKEY && slot != ATECC_SLOT_KDF)) {
+        return ATECC_ERR_INVALID_ARGS;
     }
     if (msg == kdf_out) {
-        return SC_ERR_INVALID_ARGS;
+        return ATECC_ERR_INVALID_ARGS;
     }
 
     ATCA_STATUS result = _authorize_key();
@@ -584,48 +580,48 @@ static int _securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t le
     return atcah_io_decrypt(&io_dec_params);
 }
 
-int securechip_kdf(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+int atecc_kdf(const uint8_t* msg, size_t len, uint8_t* kdf_out)
 {
-    return _securechip_kdf(SECURECHIP_SLOT_KDF, msg, len, kdf_out);
+    return _atecc_kdf(ATECC_SLOT_KDF, msg, len, kdf_out);
 }
 
-int securechip_kdf_rollkey(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+int atecc_kdf_rollkey(const uint8_t* msg, size_t len, uint8_t* kdf_out)
 {
-    return _securechip_kdf(SECURECHIP_SLOT_ROLLKEY, msg, len, kdf_out);
+    return _atecc_kdf(ATECC_SLOT_ROLLKEY, msg, len, kdf_out);
 }
 
-bool securechip_gen_attestation_key(uint8_t* pubkey_out)
-{
-    ATCA_STATUS result = _authorize_key();
-    if (result != ATCA_SUCCESS) {
-        return false;
-    }
-    return atcab_genkey(SECURECHIP_SLOT_ATTESTATION, pubkey_out) == ATCA_SUCCESS;
-}
-
-bool securechip_attestation_sign(const uint8_t* msg, uint8_t* signature_out)
+bool atecc_gen_attestation_key(uint8_t* pubkey_out)
 {
     ATCA_STATUS result = _authorize_key();
     if (result != ATCA_SUCCESS) {
         return false;
     }
-    return atcab_sign(SECURECHIP_SLOT_ATTESTATION, msg, signature_out) == ATCA_SUCCESS;
+    return atcab_genkey(ATECC_SLOT_ATTESTATION, pubkey_out) == ATCA_SUCCESS;
 }
 
-bool securechip_monotonic_increments_remaining(uint32_t* remaining_out)
+bool atecc_attestation_sign(const uint8_t* msg, uint8_t* signature_out)
+{
+    ATCA_STATUS result = _authorize_key();
+    if (result != ATCA_SUCCESS) {
+        return false;
+    }
+    return atcab_sign(ATECC_SLOT_ATTESTATION, msg, signature_out) == ATCA_SUCCESS;
+}
+
+bool atecc_monotonic_increments_remaining(uint32_t* remaining_out)
 {
     uint32_t counter;
     if (atcab_counter_read(0, &counter) != ATCA_SUCCESS) {
         return false;
     }
     if (COUNTER_MAX_VALUE < counter) {
-        Abort("SC returned an invalid value");
+        Abort("ATECC returned an invalid value");
     }
     *remaining_out = COUNTER_MAX_VALUE - counter;
     return true;
 }
 
-bool securechip_random(uint8_t* rand_out)
+bool atecc_random(uint8_t* rand_out)
 {
     return atcab_random(rand_out) == ATCA_SUCCESS;
 }
@@ -653,14 +649,14 @@ static bool _ecc_write_priv_key(const uint8_t* priv_key)
     }
 
     return atcab_priv_write(
-               SECURECHIP_SLOT_ECC_UNSAFE_SIGN,
+               ATECC_SLOT_ECC_UNSAFE_SIGN,
                atca_priv_key,
-               SECURECHIP_SLOT_ENCRYPTION_KEY,
+               ATECC_SLOT_ENCRYPTION_KEY,
                encryption_key,
                nonce_contribution) == ATCA_SUCCESS;
 }
 
-bool securechip_ecc_generate_public_key(uint8_t* priv_key, uint8_t* pub_key)
+bool atecc_ecc_generate_public_key(uint8_t* priv_key, uint8_t* pub_key)
 {
     if (!_ecc_write_priv_key(priv_key)) {
         return false;
@@ -671,7 +667,7 @@ bool securechip_ecc_generate_public_key(uint8_t* priv_key, uint8_t* pub_key)
         return false;
     }
 
-    result = atcab_get_pubkey(SECURECHIP_SLOT_ECC_UNSAFE_SIGN, pub_key);
+    result = atcab_get_pubkey(ATECC_SLOT_ECC_UNSAFE_SIGN, pub_key);
     if (result != ATCA_SUCCESS) {
         return false;
     }
@@ -679,7 +675,7 @@ bool securechip_ecc_generate_public_key(uint8_t* priv_key, uint8_t* pub_key)
     return true;
 }
 
-bool securechip_ecc_unsafe_sign(const uint8_t* priv_key, const uint8_t* msg, uint8_t* sig)
+bool atecc_ecc_unsafe_sign(const uint8_t* priv_key, const uint8_t* msg, uint8_t* sig)
 {
     if (!_ecc_write_priv_key(priv_key)) {
         return false;
@@ -690,7 +686,7 @@ bool securechip_ecc_unsafe_sign(const uint8_t* priv_key, const uint8_t* msg, uin
         return false;
     }
 
-    result = atcab_sign(SECURECHIP_SLOT_ECC_UNSAFE_SIGN, msg, sig);
+    result = atcab_sign(ATECC_SLOT_ECC_UNSAFE_SIGN, msg, sig);
     if (result != ATCA_SUCCESS) {
         return false;
     }
@@ -718,12 +714,8 @@ static bool _read_data_slot_block(uint8_t* bytes, uint16_t slot, uint8_t block)
         return false;
     }
     return atcab_read_enc(
-               slot,
-               block,
-               bytes,
-               encryption_key,
-               SECURECHIP_SLOT_ENCRYPTION_KEY,
-               nonce_contribution) == ATCA_SUCCESS;
+               slot, block, bytes, encryption_key, ATECC_SLOT_ENCRYPTION_KEY, nonce_contribution) ==
+           ATCA_SUCCESS;
 }
 
 // Write a "standard" sized block from a data slot (must be 32 bytes)
@@ -745,7 +737,7 @@ static bool _write_data_slot_block(uint8_t* bytes, uint16_t slot, uint8_t block)
         return false;
     }
     result = atcab_write_enc(
-        slot, block, bytes, encryption_key, SECURECHIP_SLOT_ENCRYPTION_KEY, nonce_contribution);
+        slot, block, bytes, encryption_key, ATECC_SLOT_ENCRYPTION_KEY, nonce_contribution);
     if (result != ATCA_SUCCESS) {
         return false;
     }
@@ -757,40 +749,40 @@ static bool _write_data_slot_block(uint8_t* bytes, uint16_t slot, uint8_t block)
     return MEMEQ(written_bytes, bytes, sizeof(written_bytes));
 }
 
-bool securechip_u2f_counter_set(uint32_t counter)
+bool atecc_u2f_counter_set(uint32_t counter)
 {
     data_9_0_t data = {0};
-    if (!_read_data_slot_block(&data.bytes[0], SECURECHIP_SLOT_DATA0, 0)) {
+    if (!_read_data_slot_block(&data.bytes[0], ATECC_SLOT_DATA0, 0)) {
         return false;
     }
 
     data.fields.u2f_counter = counter;
 
-    return _write_data_slot_block(&data.bytes[0], SECURECHIP_SLOT_DATA0, 0);
+    return _write_data_slot_block(&data.bytes[0], ATECC_SLOT_DATA0, 0);
 }
 #endif
 
 #if APP_U2F == 1
-bool securechip_u2f_counter_inc(uint32_t* counter)
+bool atecc_u2f_counter_inc(uint32_t* counter)
 {
     data_9_0_t data = {0};
-    if (!_read_data_slot_block(&data.bytes[0], SECURECHIP_SLOT_DATA0, 0)) {
+    if (!_read_data_slot_block(&data.bytes[0], ATECC_SLOT_DATA0, 0)) {
         return false;
     }
 
     data.fields.u2f_counter += 1;
     *counter = data.fields.u2f_counter;
 
-    return _write_data_slot_block(&data.bytes[0], SECURECHIP_SLOT_DATA0, 0);
+    return _write_data_slot_block(&data.bytes[0], ATECC_SLOT_DATA0, 0);
 }
 #endif
 
-bool securechip_model(securechip_model_t* model_out)
+bool atecc_model(securechip_model_t* model_out)
 {
     uint8_t revision[4] = {0};
     if (atcab_info(revision) != ATCA_SUCCESS) {
         return false;
     }
-    *model_out = revision[3] >= 0x03 ? SECURECHIP_ATECC608B : SECURECHIP_ATECC608A;
+    *model_out = revision[3] >= 0x03 ? ATECC_ATECC608B : ATECC_ATECC608A;
     return true;
 }

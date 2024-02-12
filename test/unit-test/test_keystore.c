@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include <atecc/atecc.h>
 #include <cipher/cipher.h>
 #include <keystore.h>
 #include <memory/bitbox02_smarteeprom.h>
@@ -27,6 +26,7 @@
 #include <secp256k1_ecdsa_s2c.h>
 #include <secp256k1_recovery.h>
 #include <secp256k1_schnorrsig.h>
+#include <securechip/securechip.h>
 #include <util.h>
 
 #include <stdint.h>

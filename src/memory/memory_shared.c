@@ -51,3 +51,8 @@ uint8_t memory_get_screen_type(void)
         return MEMORY_SCREEN_TYPE_SH1107;
     }
 }
+
+uint8_t memory_get_securechip_type(void)
+{
+    return MEMORY_SECURECHIP_TYPE_ATECC;
+}

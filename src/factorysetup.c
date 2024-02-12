@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "atecc/atecc.h"
 #include "common_main.h"
 #include "driver_init.h"
 #include "flags.h"
@@ -20,6 +19,7 @@
 #include "memory/memory.h"
 #include "platform_init.h"
 #include "screen.h"
+#include "securechip/securechip.h"
 #include "usb/usb.h"
 #include "usb/usb_packet.h"
 #include "usb/usb_processing.h"

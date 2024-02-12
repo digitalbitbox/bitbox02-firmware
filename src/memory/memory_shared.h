@@ -68,4 +68,8 @@ void memory_read_shared_bootdata(chunk_shared_t* chunk_out);
  */
 USE_RESULT uint8_t memory_get_screen_type(void);
 
+#define MEMORY_SECURECHIP_TYPE_ATECC 0xFF
+#define MEMORY_SECURECHIP_TYPE_OPTIGA 0x01
+USE_RESULT uint8_t memory_get_securechip_type(void);
+
 #endif

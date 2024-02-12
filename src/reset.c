@@ -20,7 +20,7 @@
 #include "memory/smarteeprom.h"
 
 #ifndef TESTING
-#include "atecc/atecc.h"
+#include "securechip/securechip.h"
 #include <driver_init.h>
 #include <hal_delay.h>
 #include <ui/components/status.h>
