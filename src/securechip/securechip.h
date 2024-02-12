@@ -161,6 +161,7 @@ USE_RESULT bool securechip_u2f_counter_inc(uint32_t* counter);
 typedef enum {
     ATECC_ATECC608A,
     ATECC_ATECC608B,
+    OPTIGA_TRUST_M_V3,
 } securechip_model_t;
 
 /**

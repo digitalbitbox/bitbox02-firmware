@@ -16,6 +16,7 @@
 #include "atecc/atecc.h"
 #include "hardfault.h"
 #include "memory/memory_shared.h"
+#include "optiga-pal/optiga.h"
 
 typedef struct {
     int (*setup)(const securechip_interface_functions_t* fns);
@@ -44,7 +45,10 @@ bool securechip_init(void)
 {
     switch (memory_get_securechip_type()) {
     case MEMORY_SECURECHIP_TYPE_OPTIGA:
-        Abort("Not implemented");
+        _fns.setup = optiga_setup;
+        _fns.kdf = optiga_hmac;
+        _fns.random = optiga_random;
+        _fns.model = optiga_model;
         break;
     case MEMORY_SECURECHIP_TYPE_ATECC:
     default:

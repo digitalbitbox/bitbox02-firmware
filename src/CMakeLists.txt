@@ -143,6 +143,18 @@ set(PLATFORM-BITBOX02-SOURCES ${PLATFORM-BITBOX02-SOURCES} PARENT_SCOPE)
 set(SECURECHIP-SOURCES
   ${CMAKE_SOURCE_DIR}/src/atecc/atecc.c
   ${CMAKE_SOURCE_DIR}/src/securechip/securechip.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_crypt_mbedtls.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_gpio.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_i2c.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_ifx_i2c_config.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_logger.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_datastore.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_event.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_lock.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_timer.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_memory.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/optiga.c
 )
 set(SECURECHIP-SOURCES ${SECURECHIP-SOURCES} PARENT_SCOPE)
 

@@ -29,6 +29,7 @@ pub fn process() -> Result<Response, Error> {
         securechip_model: match securechip::model()? {
             securechip::Model::ATECC_ATECC608A => "ATECC608A".into(),
             securechip::Model::ATECC_ATECC608B => "ATECC608B".into(),
+            securechip::Model::OPTIGA_TRUST_M_V3 => "OPTIGA_TRUST_M_V3".into(),
         },
     }))
 }

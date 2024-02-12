@@ -41,8 +41,8 @@ typedef union {
         uint8_t auto_enter;
         uint8_t upside_down;
         uint8_t screen_type;
+        uint8_t securechip_type;
         // Following are used by firmware only
-        uint8_t reserved[1];
         uint8_t io_protection_key_split[32];
         uint8_t authorization_key_split[32];
         uint8_t encryption_key_split[32];

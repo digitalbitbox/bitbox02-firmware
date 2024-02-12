@@ -54,5 +54,14 @@ uint8_t memory_get_screen_type(void)
 
 uint8_t memory_get_securechip_type(void)
 {
-    return MEMORY_SECURECHIP_TYPE_ATECC;
+    chunk_shared_t chunk = {0};
+    memory_read_shared_bootdata(&chunk);
+    uint8_t securechip_type = chunk.fields.securechip_type;
+    util_zero(&chunk, sizeof(chunk));
+    switch (securechip_type) {
+    case MEMORY_SECURECHIP_TYPE_OPTIGA:
+        return securechip_type;
+    default:
+        return MEMORY_SECURECHIP_TYPE_ATECC;
+    }
 }
