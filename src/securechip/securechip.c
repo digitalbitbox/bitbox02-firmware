@@ -26,6 +26,18 @@
 #include <host/atca_host.h>
 #pragma GCC diagnostic pop
 
+typedef enum {
+    SECURECHIP_SLOT_IO_PROTECTION_KEY = 0,
+    SECURECHIP_SLOT_AUTHKEY = 1,
+    SECURECHIP_SLOT_ENCRYPTION_KEY = 2,
+    SECURECHIP_SLOT_ROLLKEY = 3,
+    SECURECHIP_SLOT_KDF = 4,
+    SECURECHIP_SLOT_ATTESTATION = 5,
+    SECURECHIP_SLOT_ECC_UNSAFE_SIGN = 6,
+    SECURECHIP_SLOT_DATA0 = 9,
+    // The other slots are currently not in use.
+} securechip_slot_t;
+
 // Chip Configuration, generated with "make generate-atecc608-config"
 // The first 16 bytes, as well as the LockValue/LockConfig can't be changed and are ignored when
 // writing the configuration to the device. Locking is performed via the Lock command during setup,
@@ -515,7 +527,7 @@ bool securechip_update_keys(void)
     return _update_kdf_key() == ATCA_SUCCESS;
 }
 
-int securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
+static int _securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
 {
     if (len > 127 || (slot != SECURECHIP_SLOT_ROLLKEY && slot != SECURECHIP_SLOT_KDF)) {
         return SC_ERR_INVALID_ARGS;
@@ -570,6 +582,16 @@ int securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8
         .data_size = 32,
     };
     return atcah_io_decrypt(&io_dec_params);
+}
+
+int securechip_kdf(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+{
+    return _securechip_kdf(SECURECHIP_SLOT_KDF, msg, len, kdf_out);
+}
+
+int securechip_kdf_rollkey(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+{
+    return _securechip_kdf(SECURECHIP_SLOT_ROLLKEY, msg, len, kdf_out);
 }
 
 bool securechip_gen_attestation_key(uint8_t* pubkey_out)

@@ -23,6 +23,11 @@
 #include <string.h>
 #include <wally_crypto.h>
 
+typedef enum {
+    SECURECHIP_SLOT_ROLLKEY = 3,
+    SECURECHIP_SLOT_KDF = 4,
+} securechip_slot_t;
+
 static uint32_t _u2f_counter;
 
 bool securechip_update_keys(void)
@@ -40,7 +45,7 @@ static const uint8_t _kdfkey[32] =
     "\xd2\xe1\xe6\xb1\x8b\x6c\x6b\x08\x43\x3e\xdb\xc1\xd1\x68\xc1\xa0\x04\x37\x74\xa4\x22\x18\x77"
     "\xe7\x9e\xd5\x66\x84\xbe\x5a\xc0\x1b";
 
-int securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
+static int _securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8_t* kdf_out)
 {
     const uint8_t* key;
     switch (slot) {
@@ -55,6 +60,14 @@ int securechip_kdf(securechip_slot_t slot, const uint8_t* msg, size_t len, uint8
     }
     wally_hmac_sha256(key, 32, msg, len, kdf_out, 32);
     return 0;
+}
+int securechip_kdf(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+{
+    return _securechip_kdf(SECURECHIP_SLOT_KDF, msg, len, kdf_out);
+}
+int securechip_kdf_rollkey(const uint8_t* msg, size_t len, uint8_t* kdf_out)
+{
+    return _securechip_kdf(SECURECHIP_SLOT_ROLLKEY, msg, len, kdf_out);
 }
 
 bool securechip_u2f_counter_set(uint32_t counter)

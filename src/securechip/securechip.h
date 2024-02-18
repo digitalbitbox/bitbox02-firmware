@@ -49,18 +49,6 @@ typedef struct {
     void (*const random_32_bytes)(uint8_t* buf);
 } securechip_interface_functions_t;
 
-typedef enum {
-    SECURECHIP_SLOT_IO_PROTECTION_KEY = 0,
-    SECURECHIP_SLOT_AUTHKEY = 1,
-    SECURECHIP_SLOT_ENCRYPTION_KEY = 2,
-    SECURECHIP_SLOT_ROLLKEY = 3,
-    SECURECHIP_SLOT_KDF = 4,
-    SECURECHIP_SLOT_ATTESTATION = 5,
-    SECURECHIP_SLOT_ECC_UNSAFE_SIGN = 6,
-    SECURECHIP_SLOT_DATA0 = 9,
-    // The other slots are currently not in use.
-} securechip_slot_t;
-
 /**
  * Initializes the cryptoauthlib communication, by providing a custom i2c chip
  * communication interface/bridge to cryptoauthlib. On first call, the chip
@@ -80,22 +68,26 @@ USE_RESULT int securechip_setup(const securechip_interface_functions_t* ifs);
 USE_RESULT bool securechip_update_keys(void);
 
 /**
- * Perform KDF using the key in predefined slot with the input msg.
- * Calling this function for SECURECHIP_SLOT_ROLLKEY also increments the
- * monotonic counter Counter0.
- * @param[in] slot should be one of SECURECHIP_SLOT_ROLLKEY and
- *            SECURECHIP_SLOT_KDF.
+ * Perform HMAC using the key in KDF slot with the input msg.
  * @param[in] msg Use this msg as input
  * @param[in] len Must be <= 127.
  * @param[out] kdf_out Must have size 32. Result of the kdf will be stored here.
  * Cannot be the same as `msg`.
  * @return values of `securechip_error_t` if negative, values of `ATCA_STATUS` if positive, 0 on
  */
-USE_RESULT int securechip_kdf(
-    securechip_slot_t slot,
-    const uint8_t* msg,
-    size_t len,
-    uint8_t* kdf_out);
+USE_RESULT int securechip_kdf(const uint8_t* msg, size_t len, uint8_t* kdf_out);
+
+/**
+ * Perform KDF using the key in rollkey slot with the input msg.
+ * Calling this function increments the
+ * monotonic counter Counter0.
+ * @param[in] msg Use this msg as input
+ * @param[in] len Must be <= 127.
+ * @param[out] kdf_out Must have size 32. Result of the kdf will be stored here.
+ * Cannot be the same as `msg`.
+ * @return values of `securechip_error_t` if negative, values of `ATCA_STATUS` if positive, 0 on
+ */
+USE_RESULT int securechip_kdf_rollkey(const uint8_t* msg, size_t len, uint8_t* kdf_out);
 
 /**
  * Generates a new attestation device key and outputs the public key.
