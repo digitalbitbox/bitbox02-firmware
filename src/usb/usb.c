@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "usb.h"
+#include "hal_delay.h"
+#include "util.h"
 #ifndef TESTING
 #include "hid_hww.h"
+#include "iap2/iap2.h"
 #include "usb_desc.h"
 #include "usbdc.h"
 #if APP_U2F == 1
@@ -80,6 +83,33 @@ static void _timeout_cb(const struct timer_task* const timer_task)
 
 static bool _usb_enabled = false;
 
+static volatile bool _iap2_data_ready = false;
+
+static void iap2_ctrl_rd(uint16_t count)
+{
+    traceln("%s %u", "ctrl read got data", count);
+}
+static void iap2_ctrl_wr(uint16_t count)
+{
+    traceln("%s %u", "ctrl write got data", count);
+}
+static uint8_t read_buf[64];
+static void iap2_bulk_rd(const uint8_t ep, const enum usb_xfer_code rc, const uint32_t count)
+{
+    (void)ep;
+    (void)rc;
+    //_iap2_data_ready = true;
+    uint32_t len = count > sizeof(read_buf) ? sizeof(read_buf) : count;
+    iap2_read(read_buf, len);
+    traceln("%s %lu", "read got data", len);
+}
+static void iap2_bulk_wr(const uint8_t ep, const enum usb_xfer_code rc, const uint32_t count)
+{
+    (void)ep;
+    (void)rc;
+    traceln("%s %lu", "write got data", count);
+}
+
 int32_t usb_start(void (*on_hww_init)(void))
 {
 #if !defined(TESTING) && APP_U2F == 1
@@ -109,8 +139,33 @@ int32_t usb_start(void (*on_hww_init)(void))
         return ret;
     }
 #endif
-    usbdc_start(_descriptor);
+    ret = iap2_register_callback(IAP2_CTRL_READ_CB, (FUNC_PTR)iap2_ctrl_rd);
+    ret = iap2_register_callback(IAP2_CTRL_WRITE_CB, (FUNC_PTR)iap2_ctrl_wr);
+    ret = iap2_register_callback(IAP2_BULK_READ_CB, (FUNC_PTR)iap2_bulk_rd);
+    ret = iap2_register_callback(IAP2_BULK_WRITE_CB, (FUNC_PTR)iap2_bulk_wr);
+    traceln("%s", "callbacks registered");
+    ret = iap2_init();
+    if (ret != 0) {
+        return ret;
+    }
+    ret = usbdc_start(_descriptor);
+    if (ret != 0) {
+        return ret;
+    }
     usbdc_attach();
+    while (!iap2_is_enabled()) {
+    }
+    // uint8_t buf[100] = {0};
+    // for(;;) {
+    //     //if (_iap2_data_ready) {
+    //     //    traceln("0xff5a? %s", util_uint8_to_hex_alloc(buf, sizeof(buf)));
+    //     //    memset(buf, 0, sizeof(buf));
+    //     //    _iap2_data_ready = false;
+    //     //} else {
+    //     //    iap2_read(buf, 100);
+    //     //}
+    //     delay_ms(10);
+    // }
 #else
     (void)on_hww_init;
 #endif

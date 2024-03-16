@@ -48,6 +48,8 @@ set(DBB-FIRMWARE-USB-SOURCES
   ${CMAKE_SOURCE_DIR}/src/usb/usb_frame.c
   ${CMAKE_SOURCE_DIR}/src/usb/usb_packet.c
   ${CMAKE_SOURCE_DIR}/src/u2f/u2f_packet.c
+  ${CMAKE_SOURCE_DIR}/src/mfi/mfi.c
+  ${CMAKE_SOURCE_DIR}/src/usb/class/iap2/iap2.c
 )
 set(DBB-FIRMWARE-USB-SOURCES ${DBB-FIRMWARE-USB-SOURCES} PARENT_SCOPE)
 

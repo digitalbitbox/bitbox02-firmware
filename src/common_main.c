@@ -20,6 +20,7 @@
 #include "memory/memory.h"
 #include "memory/mpu.h"
 #include "memory/smarteeprom.h"
+#include "mfi/mfi.h"
 #include "random.h"
 #include "screen.h"
 #include "securechip/securechip.h"
@@ -83,16 +84,19 @@ void common_main(void)
     /* Enable/configure SmartEEPROM. */
     smarteeprom_bb02_config();
 
+    init_mfi();
+
     // securechip_setup must come after memory_setup, so the io/auth keys to be
     // used are already initialized.
     int securechip_result = securechip_setup(&_securechip_interface_functions);
-    if (securechip_result) {
-        char errmsg[100] = {0};
-        snprintf(
-            errmsg,
-            sizeof(errmsg),
-            "Securechip setup failed.\nError code: %i\nPlease contact support.",
-            securechip_result);
-        AbortAutoenter(errmsg);
-    }
+    (void)securechip_result;
+    // if (securechip_result) {
+    //     char errmsg[100] = {0};
+    //     snprintf(
+    //         errmsg,
+    //         sizeof(errmsg),
+    //         "Securechip setup failed.\nError code: %i\nPlease contact support.",
+    //         securechip_result);
+    //     AbortAutoenter(errmsg);
+    // }
 }
