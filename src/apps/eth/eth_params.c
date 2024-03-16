@@ -13913,6 +13913,12 @@ static const app_eth_erc20_params_t _ethereum_erc20_params[] = {
             "\x36\x84\xb5\x81\xdb\x1f\x94\xb7\x21\xee\x00\x22\x62\x43\x29\xfe\xb1\x6a\xb6\x53",
         .decimals = 18,
     },
+    {
+        .unit = "RBLZ",
+        .contract_address =
+            "\xdc\x75\x17\x6f\x4d\xba\x68\x22\xc5\xd8\x41\xaf\x29\x47\xd0\x06\x4c\xa8\xc1\xb3",
+        .decimals = 18,
+    },
 };
 
 const app_eth_erc20_params_t* app_eth_erc20_params_get(
