@@ -349,6 +349,9 @@ endif()
 #-----------------------------------------------------------------------------
 # Build
 
+# Optiga config must be defined both when compiling the optiga lib, and also when compiling our sources.
+add_compile_definitions(${elf} PRIVATE OPTIGA_LIB_EXTERNAL="optiga/optiga_lib_config_bitbox02.h")
+
 add_subdirectory(external)
 add_subdirectory(messages)
 add_subdirectory(src)

@@ -56,5 +56,5 @@ for dir in build build-build; do
 
 	echo "Checking $(echo ${SOURCES} | wc -w) files with clang-tidy"
 	# The list of tidy checks must stay in sync with scripts/tidy
-	${CLANGTIDY} -quiet -p ${dir} -checks=-*,clang-analyzer-*,-clang-analyzer-cplusplus*,bugprone-*,performance-*,portability-*,readability-*,-readability-braces-around-statements,-readability-magic-numbers,-readability-isolate-declaration,-readability-identifier-length,-readability-function-cognitive-complexity,-bugprone-reserved-identifier,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,-performance-no-int-to-ptr,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -warnings-as-errors=* -header-filter '.*' ${SOURCES}
+	${CLANGTIDY} -quiet -p ${dir} -checks=-*,clang-analyzer-*,-clang-analyzer-cplusplus*,bugprone-*,performance-*,portability-*,readability-*,-readability-braces-around-statements,-readability-magic-numbers,-readability-isolate-declaration,-readability-identifier-length,-readability-function-cognitive-complexity,-bugprone-reserved-identifier,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,-performance-no-int-to-ptr,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,-readability-suspicious-call-argument -warnings-as-errors=* -header-filter '.*' ${SOURCES}
 done

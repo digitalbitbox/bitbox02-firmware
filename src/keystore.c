@@ -72,7 +72,7 @@ USE_RESULT static keystore_error_t _stretch_retained_seed_encryption_key(
     if (!salt_hash_data(encryption_key, 32, purpose_in, salted_hashed)) {
         return KEYSTORE_ERR_SALT;
     }
-    if (securechip_kdf(SECURECHIP_SLOT_KDF, salted_hashed, 32, out)) {
+    if (securechip_kdf(salted_hashed, 32, out)) {
         return KEYSTORE_ERR_SECURECHIP;
     }
     if (!salt_hash_data(encryption_key, 32, purpose_out, salted_hashed)) {
@@ -187,9 +187,8 @@ static keystore_error_t _stretch_password(
     UTIL_CLEANUP_32(kdf_in);
     memcpy(kdf_in, password_salted_hashed, 32);
 
-    // First KDF on SECURECHIP_SLOT_ROLLKEY increments the monotonic
-    // counter. Call only once!
-    int securechip_result = securechip_kdf(SECURECHIP_SLOT_ROLLKEY, kdf_in, 32, kdf_out);
+    // First KDF on rollkey increments the monotonic counter. Call only once!
+    int securechip_result = securechip_kdf_rollkey(kdf_in, 32, kdf_out);
     if (securechip_result) {
         if (securechip_result_out != NULL) {
             *securechip_result_out = securechip_result;
@@ -199,7 +198,7 @@ static keystore_error_t _stretch_password(
     // Second KDF does not use the counter and we call it multiple times.
     for (int i = 0; i < KDF_NUM_ITERATIONS; i++) {
         memcpy(kdf_in, kdf_out, 32);
-        securechip_result = securechip_kdf(SECURECHIP_SLOT_KDF, kdf_in, 32, kdf_out);
+        securechip_result = securechip_kdf(kdf_in, 32, kdf_out);
         if (securechip_result) {
             if (securechip_result_out != NULL) {
                 *securechip_result_out = securechip_result;

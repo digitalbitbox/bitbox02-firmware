@@ -80,6 +80,41 @@ set_property(TARGET secp256k1
 set_target_properties(secp256k1 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
 set_target_properties(secp256k1 PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libwally-core/src/secp256k1/include)
 
+set(MBEDTLS_CFLAGS "-mcpu=cortex-m4 -mthumb -mlong-calls -mfloat-abi=softfp -mfpu=fpv4-sp-d16 -fomit-frame-pointer -D__SAMD51J20A__")
+
+#set(ENABLE_TESTING OFF CACHE BOOL "Turn off testing in mbedtls" FORCE)
+#add_subdirectory(mbedtls)
+ExternalProject_Add(mbedtls-project
+  PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/mbedtls
+  SOURCE_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -DENABLE_TESTING=Off -DENABLE_PROGRAMS=Off -DCMAKE_TOOLCHAIN_FILE=../../arm.cmake -DCMAKE_C_FLAGS=${MBEDTLS_CFLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls
+  INSTALL_COMMAND   ${CMAKE_COMMAND} -E make_directory ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
+  COMMAND           ${CMAKE_COMMAND} -E copy
+                      ${CMAKE_CURRENT_BINARY_DIR}/mbedtls/src/mbedtls-project-build/library/libmbedtls.a
+                      ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedtls.a
+  COMMAND           ${CMAKE_COMMAND} -E copy
+                      ${CMAKE_CURRENT_BINARY_DIR}/mbedtls/src/mbedtls-project-build/library/libmbedx509.a
+                      ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedx509.a
+  COMMAND           ${CMAKE_COMMAND} -E copy
+                      ${CMAKE_CURRENT_BINARY_DIR}/mbedtls/src/mbedtls-project-build/library/libmbedcrypto.a
+                      ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedcrypto.a
+)
+
+add_library(mbedtls STATIC IMPORTED GLOBAL)
+set_property(TARGET mbedtls
+  PROPERTY IMPORTED_LOCATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedtls.a)
+set_target_properties(mbedtls PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include)
+
+add_library(mbedx509 STATIC IMPORTED GLOBAL)
+set_property(TARGET mbedx509
+  PROPERTY IMPORTED_LOCATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedx509.a)
+set_target_properties(mbedx509 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include)
+
+add_library(mbedcrypto STATIC IMPORTED GLOBAL)
+set_property(TARGET mbedcrypto
+  PROPERTY IMPORTED_LOCATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedcrypto.a)
+set_target_properties(mbedcrypto PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include)
+
 
 if(CMAKE_CROSSCOMPILING)
   # Cortex Microcontroller Software Interface Standard
@@ -251,3 +286,21 @@ add_library(ctaes
   ctaes/ctaes.c
 )
 target_include_directories(ctaes SYSTEM PUBLIC ctaes)
+
+# optiga-trust-m
+
+add_library(optiga
+  optiga-trust-m/optiga/cmd/optiga_cmd.c
+  optiga-trust-m/optiga/common/optiga_lib_common.c
+  optiga-trust-m/optiga/common/optiga_lib_logger.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c_config.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c_data_link_layer.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c_physical_layer.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c_presentation_layer.c
+  optiga-trust-m/optiga/comms/ifx_i2c/ifx_i2c_transport_layer.c
+  optiga-trust-m/optiga/comms/optiga_comms_ifx_i2c.c
+  optiga-trust-m/optiga/crypt/optiga_crypt.c
+  optiga-trust-m/optiga/util/optiga_util.c
+)
+target_include_directories(optiga SYSTEM PUBLIC optiga-trust-m/optiga/include)

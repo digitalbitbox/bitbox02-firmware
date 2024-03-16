@@ -83,6 +83,9 @@ void common_main(void)
     /* Enable/configure SmartEEPROM. */
     smarteeprom_bb02_config();
 
+    if (!securechip_init()) {
+        AbortAutoenter("Failed to detect securechip");
+    }
     // securechip_setup must come after memory_setup, so the io/auth keys to be
     // used are already initialized.
     int securechip_result = securechip_setup(&_securechip_interface_functions);
