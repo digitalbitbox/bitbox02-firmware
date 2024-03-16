@@ -853,6 +853,7 @@ class BitBox02(BitBoxCommonAPI):
                     recipient=recipient,
                     value=value,
                     data=data,
+                    address=recipient.hex(),
                 )
             )
             return handle_antiklepto(request)
@@ -871,6 +872,7 @@ class BitBox02(BitBoxCommonAPI):
                 recipient=recipient,
                 value=value,
                 data=data,
+                address=recipient.hex(),
             )
         )
 
