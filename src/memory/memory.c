@@ -36,6 +36,8 @@
 
 /********* Definitions and read/write helper functions ****************/
 
+const char* MEMORY_DEFAULT_DEVICE_NAME = "My BitBox";
+
 // Documentation of all appData chunks and their contents.  A chunk is defined as
 // 16 pages, which is the erase granularity: changing any byte in the page
 // involves erases and writing all 16 pages. One page is 512 bytes.  The MCU has

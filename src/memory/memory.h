@@ -60,7 +60,8 @@ USE_RESULT bool memory_reset_hww(void);
  */
 USE_RESULT bool memory_cleanup_smarteeprom(void);
 
-#define MEMORY_DEFAULT_DEVICE_NAME "My BitBox"
+// Default device name if no name was set by the user.
+const char* MEMORY_DEFAULT_DEVICE_NAME;
 // Don't change this without proper memory layout migration! (see chunk_1_t in
 // memory.c)
 #define MEMORY_DEVICE_NAME_MAX_LEN (64)
@@ -69,7 +70,8 @@ USE_RESULT bool memory_cleanup_smarteeprom(void);
 // size (including the null terminator) is MEMORY_DEVICE_NAME_MAX_LEN bytes.
 USE_RESULT bool memory_set_device_name(const char* name);
 
-// name_out must have MEMORY_DEVICE_NAME_MAX_LEN bytes in size.
+// name_out must have MEMORY_DEVICE_NAME_MAX_LEN bytes in size. Returns `MEMORY_DEFAULT_DEVICE_NAME`
+// if no device name is set.
 void memory_get_device_name(char* name_out);
 
 /**
