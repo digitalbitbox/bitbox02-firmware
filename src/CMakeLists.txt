@@ -140,10 +140,23 @@ set(PLATFORM-BITBOX02-SOURCES
 )
 set(PLATFORM-BITBOX02-SOURCES ${PLATFORM-BITBOX02-SOURCES} PARENT_SCOPE)
 
-set(CRYPTOAUTHLIB-SOURCES
+set(SECURECHIP-SOURCES
+  ${CMAKE_SOURCE_DIR}/src/atecc/atecc.c
   ${CMAKE_SOURCE_DIR}/src/securechip/securechip.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_crypt_mbedtls.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_gpio.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_i2c.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_ifx_i2c_config.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_logger.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_datastore.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_event.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_lock.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_timer.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/pal_os_memory.c
+  ${CMAKE_SOURCE_DIR}/src/optiga-pal/optiga.c
 )
-set(CRYPTOAUTHLIB-SOURCES ${CRYPTOAUTHLIB-SOURCES} PARENT_SCOPE)
+set(SECURECHIP-SOURCES ${SECURECHIP-SOURCES} PARENT_SCOPE)
 
 set(ETHEREUM-SOURCES
   ${CMAKE_SOURCE_DIR}/src/apps/eth/eth_params.c
@@ -188,7 +201,7 @@ set(FIRMWARE-SOURCES
   ${DBB-FIRMWARE-UI-SOURCES}
   ${FIRMWARE-DRIVER-SOURCES}
   ${DRIVER-SOURCES}
-  ${CRYPTOAUTHLIB-SOURCES}
+  ${SECURECHIP-SOURCES}
   ${CMAKE_SOURCE_DIR}/src/common_main.c
 )
 
@@ -601,9 +614,14 @@ if(CMAKE_CROSSCOMPILING)
   foreach(firmware ${FIRMWARES})
     set(elf ${firmware}.elf)
     add_executable(${elf} ${FIRMWARE-SOURCES})
+    add_dependencies(${elf} mbedtls-project)
     # Must manually link against C so that malloc can find _sbrk
     target_link_libraries(${elf}
       PRIVATE
+        mbedtls
+        mbedx509
+        mbedcrypto
+        optiga
         cryptoauthlib
         fatfs
         ctaes

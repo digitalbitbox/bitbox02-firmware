@@ -10,3 +10,9 @@
 [submodule "tools/ttf2ugui"]
 	path = tools/ttf2ugui
 	url = https://github.com/digitalbitbox/ttf2ugui
+[submodule "external/optiga-trust-m"]
+	path = external/optiga-trust-m
+	url = https://github.com/nickez/optiga-trust-m.git
+[submodule "external/mbedtls"]
+	path = external/mbedtls
+	url = https://github.com/nickez/mbedtls
