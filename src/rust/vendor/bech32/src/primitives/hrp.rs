@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//! Provides an `Hrp` type that represents the human-readable part of a bech32 encoded string.
+//! Provides an [`Hrp`] type that represents the human-readable part of a bech32 encoded string.
 //!
 //! > The human-readable part, which is intended to convey the type of data, or anything else that
 //! > is relevant to the reader. This part MUST contain 1 to 83 US-ASCII characters, with each
@@ -14,7 +14,7 @@ use alloc::string::String;
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
 use core::iter::FusedIterator;
-use core::slice;
+use core::{slice, str};
 
 /// Maximum length of the human-readable part, as defined by BIP-173.
 const MAX_HRP_LEN: usize = 83;
@@ -148,6 +148,16 @@ impl Hrp {
     #[inline]
     pub fn to_lowercase(&self) -> String { self.lowercase_char_iter().collect() }
 
+    /// Returns this human-readable part as bytes.
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] { &self.buf[..self.size] }
+
+    /// Returns this human-readable part as str.
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        str::from_utf8(&self.buf[..self.size]).expect("we only store ASCII bytes")
+    }
+
     /// Creates a byte iterator over the ASCII byte values (ASCII characters) of this HRP.
     ///
     /// If an uppercase HRP was parsed during object construction then this iterator will yield
@@ -181,29 +191,29 @@ impl Hrp {
     #[allow(clippy::len_without_is_empty)] // HRP is never empty.
     pub fn len(&self) -> usize { self.size }
 
-    /// Returns `true` if this [`Hrp`] is valid according to the bips.
+    /// Returns `true` if this HRP is valid according to the bips.
     ///
     /// [BIP-173] states that the HRP must be either "bc" or "tb".
     ///
-    /// [BIP-173]: https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#user-content-Segwit_address_format
+    /// [BIP-173]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#user-content-Segwit_address_format>
     #[inline]
     pub fn is_valid_segwit(&self) -> bool {
         self.is_valid_on_mainnet() || self.is_valid_on_testnet()
     }
 
-    /// Returns `true` if this hrpstring is valid on the Bitcoin network i.e., HRP is "bc".
+    /// Returns `true` if this HRP is valid on the Bitcoin network i.e., HRP is "bc".
     #[inline]
     pub fn is_valid_on_mainnet(&self) -> bool { *self == self::BC }
 
-    /// Returns `true` if this hrpstring is valid on the Bitcoin testnet network i.e., HRP is "tb".
+    /// Returns `true` if this HRP is valid on the Bitcoin testnet network i.e., HRP is "tb".
     #[inline]
     pub fn is_valid_on_testnet(&self) -> bool { *self == self::TB }
 
-    /// Returns `true` if this hrpstring is valid on the Bitcoin signet network i.e., HRP is "tb".
+    /// Returns `true` if this HRP is valid on the Bitcoin signet network i.e., HRP is "tb".
     #[inline]
     pub fn is_valid_on_signet(&self) -> bool { *self == self::TB }
 
-    /// Returns `true` if this hrpstring is valid on the Bitcoin regtest network i.e., HRP is "bcrt".
+    /// Returns `true` if this HRP is valid on the Bitcoin regtest network i.e., HRP is "bcrt".
     #[inline]
     pub fn is_valid_on_regtest(&self) -> bool { *self == self::BCRT }
 }
@@ -211,7 +221,7 @@ impl Hrp {
 /// Displays the human-readable part.
 ///
 /// If an uppercase HRP was parsed during object construction then the returned string will be
-/// in uppercase also. For a lowercase string see [`Self::to_lowercase`].
+/// in uppercase also. For a lowercase string see `Self::to_lowercase`.
 impl fmt::Display for Hrp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for c in self.char_iter() {
@@ -361,6 +371,7 @@ impl<'b> FusedIterator for LowercaseCharIter<'b> {}
 fn is_ascii_uppercase(b: u8) -> bool { (65..=90).contains(&b) }
 
 /// Errors encountered while checking the human-readable part as defined by [BIP-173].
+///
 /// [BIP-173]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#user-content-Bech32>
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -511,5 +522,19 @@ mod tests {
         assert_eq!(BC, Hrp::parse_unchecked("bc"));
         assert_eq!(TB, Hrp::parse_unchecked("tb"));
         assert_eq!(BCRT, Hrp::parse_unchecked("bcrt"));
+    }
+
+    #[test]
+    fn as_str() {
+        let s = "arbitraryhrp";
+        let hrp = Hrp::parse_unchecked(s);
+        assert_eq!(hrp.as_str(), s);
+    }
+
+    #[test]
+    fn as_bytes() {
+        let s = "arbitraryhrp";
+        let hrp = Hrp::parse_unchecked(s);
+        assert_eq!(hrp.as_bytes(), s.as_bytes());
     }
 }

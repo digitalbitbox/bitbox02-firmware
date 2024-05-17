@@ -27,11 +27,16 @@ pub trait Checksum {
     /// be pretty efficient no matter what.
     type MidstateRepr: PackedFe32;
 
+    /// The length of the code.
+    ///
+    /// The length of the code is how long a coded message can be (including the
+    /// checksum!) for the code to retain its error-correcting properties.
+    const CODE_LENGTH: usize;
+
     /// The number of characters in the checksum.
     ///
     /// Alternately, the degree of the generator polynomial. This is **not** the same
-    /// as the "length of the code", which is the maximum number of characters that
-    /// the checksum can usefully cover.
+    /// as `Self::CODE_LENGTH`.
     const CHECKSUM_LENGTH: usize;
 
     /// The coefficients of the generator polynomial, except the leading monic term,
@@ -98,8 +103,8 @@ impl<Ck: Checksum> Engine<Ck> {
 
     /// Feeds `hrp` into the checksum engine.
     #[inline]
-    pub fn input_hrp(&mut self, hrp: &Hrp) {
-        for fe in HrpFe32Iter::new(hrp) {
+    pub fn input_hrp(&mut self, hrp: Hrp) {
+        for fe in HrpFe32Iter::new(&hrp) {
             self.input_fe(fe)
         }
     }
@@ -156,11 +161,13 @@ pub trait PackedFe32: Copy + PartialEq + Eq + ops::BitXor<Self, Output = Self> {
     /// add a new field element to the now-0 constant coefficient.
     ///
     /// Takes the degree of the polynomial as an input; for checksum applications
-    /// this shoud basically always be `Checksum::CHECKSUM_WIDTH`.
+    /// this should basically always be `Checksum::CHECKSUM_WIDTH`.
     fn mul_by_x_then_add(&mut self, degree: usize, add: u8) -> u8;
 }
 
-/// A placeholder type used as part of the [`crate::primitives::NoChecksum`] "checksum".
+/// A placeholder type used as part of the [`NoChecksum`] "checksum".
+///
+/// [`NoChecksum`]: crate::primitives::NoChecksum
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PackedNull;
 

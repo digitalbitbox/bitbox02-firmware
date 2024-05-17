@@ -8,6 +8,8 @@
 //! - `FesToBytes`: An iterator over field elements to an iterator over bytes.
 //! - `Checksummed`: An iterator over field elements that appends the checksum.
 //!
+//! WARNING: This module does not enforce the maximum length of an encoded bech32 string (90 chars).
+//!
 //! # Examples
 //!
 //! ```
@@ -256,7 +258,7 @@ where
     /// Creates a new checksummed iterator which adapts a data iterator of field elements by
     /// first inputting the [`Hrp`] and then appending a checksum.
     #[inline]
-    pub fn new_hrp(hrp: &Hrp, data: I) -> Checksummed<I, Ck> {
+    pub fn new_hrp(hrp: Hrp, data: I) -> Checksummed<I, Ck> {
         let mut ret = Self::new(data);
         ret.checksum_engine.input_hrp(hrp);
         ret

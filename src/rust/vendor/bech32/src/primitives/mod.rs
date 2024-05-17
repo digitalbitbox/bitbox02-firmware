@@ -17,17 +17,20 @@ use checksum::{Checksum, PackedNull};
 pub enum NoChecksum {}
 
 /// The bech32 checksum algorithm, defined in [BIP-173].
+///
 /// [BIP-173]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki>
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Bech32 {}
 
 /// The bech32m checksum algorithm, defined in [BIP-350].
-/// [BIP-350]: <https://github.com/bitcoin/bips/blob/master/bip-0359.mediawiki>
+///
+/// [BIP-350]: <https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki>
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Bech32m {}
 
 impl Checksum for NoChecksum {
     type MidstateRepr = PackedNull;
+    const CODE_LENGTH: usize = usize::MAX;
     const CHECKSUM_LENGTH: usize = 0;
     const GENERATOR_SH: [PackedNull; 5] = [PackedNull; 5];
     const TARGET_RESIDUE: PackedNull = PackedNull;
@@ -38,6 +41,7 @@ const GEN: [u32; 5] = [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_33dd, 0x2a1
 
 impl Checksum for Bech32 {
     type MidstateRepr = u32;
+    const CODE_LENGTH: usize = 1023;
     const CHECKSUM_LENGTH: usize = 6;
     const GENERATOR_SH: [u32; 5] = GEN;
     const TARGET_RESIDUE: u32 = 1;
@@ -45,6 +49,7 @@ impl Checksum for Bech32 {
 // Same as Bech32 except TARGET_RESIDUE is different
 impl Checksum for Bech32m {
     type MidstateRepr = u32;
+    const CODE_LENGTH: usize = 1023;
     const CHECKSUM_LENGTH: usize = 6;
     const GENERATOR_SH: [u32; 5] = GEN;
     const TARGET_RESIDUE: u32 = 0x2bc830a3;

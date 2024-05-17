@@ -18,12 +18,12 @@ fn bip_173_checksum_calculated_with_uppercase_form() {
 
     assert_eq!(
         CheckedHrpstring::new::<Bech32>(s).unwrap_err(),
-        CheckedHrpstringError::Checksum(ChecksumError::InvalidChecksum)
+        CheckedHrpstringError::Checksum(ChecksumError::InvalidResidue)
     );
 
     assert_eq!(
         SegwitHrpstring::new(s).unwrap_err(),
-        SegwitHrpstringError::Checksum(ChecksumError::InvalidChecksum)
+        SegwitHrpstringError::Checksum(ChecksumError::InvalidResidue)
     );
 }
 
@@ -35,7 +35,7 @@ macro_rules! check_valid_bech32 {
                 let p = UncheckedHrpstring::new($valid_bech32).unwrap();
                 p.validate_checksum::<Bech32>().expect("valid bech32");
                 // Valid bech32 strings are by definition invalid bech32m.
-                assert_eq!(p.validate_checksum::<Bech32m>().unwrap_err(), ChecksumError::InvalidChecksum);
+                assert_eq!(p.validate_checksum::<Bech32m>().unwrap_err(), ChecksumError::InvalidResidue);
             }
         )*
     }
@@ -60,7 +60,7 @@ macro_rules! check_valid_address_roundtrip {
                 // tested by the test vectors. However when BIP-350 came into effect only witness
                 // version 0 uses bech32 (and this is enforced by encode/decode).
                 if let Ok((hrp, bech32::Fe32::Q, program)) = bech32::segwit::decode($addr) {
-                    let encoded = bech32::segwit::encode_v0(&hrp, &program).expect("failed to encode address");
+                    let encoded = bech32::segwit::encode_v0(hrp, &program).expect("failed to encode address");
                     // The bips specifically say that encoder should output lowercase characters so we uppercase manually.
                     if encoded != $addr {
                         let got = encoded.to_uppercase();

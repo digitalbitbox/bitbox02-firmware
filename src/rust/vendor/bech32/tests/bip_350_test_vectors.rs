@@ -17,12 +17,12 @@ fn bip_350_checksum_calculated_with_uppercase_form() {
 
     assert_eq!(
         CheckedHrpstring::new::<Bech32m>(s).unwrap_err(),
-        CheckedHrpstringError::Checksum(ChecksumError::InvalidChecksum)
+        CheckedHrpstringError::Checksum(ChecksumError::InvalidResidue)
     );
 
     assert_eq!(
         SegwitHrpstring::new(s).unwrap_err(),
-        SegwitHrpstringError::Checksum(ChecksumError::InvalidChecksum)
+        SegwitHrpstringError::Checksum(ChecksumError::InvalidResidue)
     );
 }
 
@@ -34,7 +34,7 @@ macro_rules! check_valid_bech32m {
                 let p = UncheckedHrpstring::new($valid_bech32m).unwrap();
                 p.validate_checksum::<Bech32m>().expect("valid bech32m");
                 // Valid bech32m strings are by definition invalid bech32.
-                assert_eq!(p.validate_checksum::<Bech32>().unwrap_err(), ChecksumError::InvalidChecksum);
+                assert_eq!(p.validate_checksum::<Bech32>().unwrap_err(), ChecksumError::InvalidResidue);
             }
         )*
     }
@@ -56,7 +56,7 @@ macro_rules! check_valid_address_roundtrip {
             #[cfg(feature = "alloc")]
             fn $test_name() {
                 let (hrp, version, program) = bech32::segwit::decode($addr).expect("failed to decode valid address");
-                let encoded = bech32::segwit::encode(&hrp, version, &program).expect("failed to encode address");
+                let encoded = bech32::segwit::encode(hrp, version, &program).expect("failed to encode address");
 
                 // The bips specifically say that encoder should output lowercase characters so we uppercase manually.
                 if encoded != $addr {
