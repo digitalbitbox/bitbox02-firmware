@@ -32,6 +32,10 @@ use pb::btc_sign_init_request::FormatUnit;
 use pb::btc_sign_next_response::Type as NextType;
 use sha2::{Digest, Sha256};
 
+use bitcoin::hashes::Hash;
+
+use streaming_silent_payments::SilentPayment;
+
 /// After each request from the host, we send a `BtcSignNextResponse` response back to the host,
 /// containing information which request we want next, and containing additional metadata if
 /// available (e.g. a signature after signing an input).
@@ -78,14 +82,7 @@ async fn get_request(
         response.next.prev_index = prev_index;
     }
     let request = crate::hww::next_request(response.to_protobuf()).await?;
-    response.next = pb::BtcSignNextResponse {
-        r#type: 0,
-        index: 0,
-        has_signature: false,
-        signature: vec![],
-        prev_index: 0,
-        anti_klepto_signer_commitment: None,
-    };
+    response.next = Default::default();
     Ok(request)
 }
 
@@ -250,7 +247,7 @@ fn validate_input(
     validate_keypath(params, script_config_account, &input.keypath)
 }
 
-fn is_taproot(script_config_account: &pb::BtcScriptConfigWithKeypath) -> bool {
+fn is_taproot_bip86(script_config_account: &pb::BtcScriptConfigWithKeypath) -> bool {
     match script_config_account {
         pb::BtcScriptConfigWithKeypath {
             script_config:
@@ -261,6 +258,10 @@ fn is_taproot(script_config_account: &pb::BtcScriptConfigWithKeypath) -> bool {
         } => *simple_type == pb::btc_script_config::SimpleType::P2tr as i32,
         _ => false,
     }
+}
+
+fn is_taproot(script_config_account: &pb::BtcScriptConfigWithKeypath) -> bool {
+    is_taproot_bip86(script_config_account)
 }
 
 /// Generates the subscript (scriptCode without the length prefix) used in the bip143 sighash algo.
@@ -514,6 +515,54 @@ fn setup_xpub_cache(cache: &mut Bip32XpubCache, script_configs: &[pb::BtcScriptC
     }
 }
 
+impl TryFrom<pb::BtcCoin> for streaming_silent_payments::Network {
+    type Error = Error;
+    fn try_from(value: pb::BtcCoin) -> Result<streaming_silent_payments::Network, Self::Error> {
+        match value {
+            pb::BtcCoin::Btc => Ok(streaming_silent_payments::Network::Btc),
+            pb::BtcCoin::Tbtc => Ok(streaming_silent_payments::Network::Tbtc),
+            _ => Err(Error::InvalidInput),
+        }
+    }
+}
+
+impl From<pb::btc_script_config::SimpleType> for streaming_silent_payments::InputType {
+    fn from(value: pb::btc_script_config::SimpleType) -> streaming_silent_payments::InputType {
+        match value {
+            pb::btc_script_config::SimpleType::P2wpkhP2sh => {
+                streaming_silent_payments::InputType::P2wpkhP2sh
+            }
+            pb::btc_script_config::SimpleType::P2wpkh => {
+                streaming_silent_payments::InputType::P2wpkh
+            }
+            pb::btc_script_config::SimpleType::P2tr => {
+                streaming_silent_payments::InputType::P2trKeypathspend
+            }
+        }
+    }
+}
+
+impl TryFrom<&pb::BtcScriptConfigWithKeypath> for streaming_silent_payments::InputType {
+    type Error = Error;
+    fn try_from(
+        value: &pb::BtcScriptConfigWithKeypath,
+    ) -> Result<streaming_silent_payments::InputType, Self::Error> {
+        match value {
+            pb::BtcScriptConfigWithKeypath {
+                script_config:
+                    Some(pb::BtcScriptConfig {
+                        config: Some(pb::btc_script_config::Config::SimpleType(simple_type)),
+                    }),
+                ..
+            } => {
+                let simple_type = pb::btc_script_config::SimpleType::try_from(*simple_type)?;
+                Ok(simple_type.into())
+            }
+            _ => Err(Error::InvalidInput),
+        }
+    }
+}
+
 /// Singing flow:
 ///
 /// init
@@ -596,14 +645,7 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
     };
 
     let mut next_response = NextResponse {
-        next: pb::BtcSignNextResponse {
-            r#type: 0,
-            index: 0,
-            has_signature: false,
-            signature: vec![],
-            prev_index: 0,
-            anti_klepto_signer_commitment: None,
-        },
+        next: Default::default(),
         wrap: false,
     };
 
@@ -620,6 +662,12 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
 
     // Are all inputs taproot?
     let taproot_only = request.script_configs.iter().all(is_taproot);
+
+    let mut silent_payment = if request.contains_silent_payment_outputs {
+        Some(SilentPayment::new(coin.try_into()?))
+    } else {
+        None
+    };
 
     for input_index in 0..request.num_inputs {
         // Update progress.
@@ -681,6 +729,28 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
             )
             .await?;
         }
+
+        if let Some(ref mut silent_payment) = silent_payment {
+            let private_key = bitcoin::secp256k1::SecretKey::from_slice(
+                &bitbox02::keystore::secp256k1_get_private_key(
+                    &tx_input.keypath,
+                    is_taproot(script_config_account),
+                )?,
+            )
+            .map_err(|_| Error::Generic)?;
+
+            silent_payment
+                .add_input(
+                    script_config_account.try_into()?,
+                    &private_key,
+                    bitcoin::OutPoint::new(
+                        bitcoin::Txid::from_slice(&tx_input.prev_out_hash)
+                            .map_err(|_| Error::InvalidInput)?,
+                        tx_input.prev_out_index,
+                    ),
+                )
+                .map_err(|_| Error::InvalidInput)?;
+        }
     }
 
     // The progress for loading the inputs is 100%.
@@ -725,6 +795,8 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
             return Err(Error::InvalidInput);
         }
 
+        let output_type = pb::BtcOutputType::try_from(tx_output.r#type)?;
+
         // Get payload. If the output is marked ours, we compute the payload from the keystore,
         // otherwise it is provided in tx_output.payload.
         let payload: common::Payload = if tx_output.ours {
@@ -744,9 +816,32 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
             )?
         } else {
             // Take payload from provided output.
-            common::Payload {
-                data: tx_output.payload.clone(),
-                output_type: pb::BtcOutputType::try_from(tx_output.r#type)?,
+
+            // Create silent payment output.
+            if let Some(output_silent_payment) = tx_output.silent_payment.as_ref() {
+                match silent_payment {
+                    None => return Err(Error::InvalidInput),
+                    Some(ref mut silent_payment) => {
+                        if output_type != pb::BtcOutputType::P2tr {
+                            return Err(Error::InvalidInput);
+                        }
+                        let xonly = silent_payment
+                            .create_output(&output_silent_payment.address)
+                            .map_err(|_| Error::InvalidInput)?;
+                        let payload = common::Payload {
+                            data: xonly.serialize().to_vec(),
+                            output_type,
+                        };
+                        next_response.next.generated_output_pkscript =
+                            payload.pk_script(coin_params)?;
+                        payload
+                    }
+                }
+            } else {
+                common::Payload {
+                    data: tx_output.payload.clone(),
+                    output_type,
+                }
             }
         };
 
@@ -776,10 +871,18 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
             return Err(Error::InvalidInput);
         }
 
+        if is_change && tx_output.silent_payment.is_some() {
+            return Err(Error::InvalidInput);
+        }
+
         if !is_change {
             // Verify output if it is not a change output.
             // Assemble address to display, get user confirmation.
-            let address = payload.address(coin_params)?;
+            let address = if let Some(sp) = tx_output.silent_payment.as_ref() {
+                sp.address.clone()
+            } else {
+                payload.address(coin_params)?
+            };
 
             if let Some(output_payment_request_index) = tx_output.payment_request_index {
                 if output_payment_request_index != 0 {
@@ -1171,9 +1274,7 @@ mod tests {
                             0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
                             0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
                         ],
-                        keypath: vec![],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         ours: false,
@@ -1183,9 +1284,7 @@ mod tests {
                             0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
                             0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
                         ],
-                        keypath: vec![],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         ours: false,
@@ -1195,9 +1294,7 @@ mod tests {
                             0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                             0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                         ],
-                        keypath: vec![],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         ours: false,
@@ -1208,29 +1305,23 @@ mod tests {
                             0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
                             0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
                         ],
-                        keypath: vec![],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         // change
                         ours: true,
                         r#type: 0,
                         value: 690000000, // btc 6.9
-                        payload: vec![],
                         keypath: vec![84 + HARDENED, bip44_coin, 10 + HARDENED, 1, 3],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         // change #2
                         ours: true,
                         r#type: 0,
                         value: 100,
-                        payload: vec![],
                         keypath: vec![84 + HARDENED, bip44_coin, 10 + HARDENED, 1, 30],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                 ],
                 locktime: 0,
@@ -1283,10 +1374,8 @@ mod tests {
                         ours: true,
                         r#type: pb::BtcOutputType::Unknown as _,
                         value: 9825, // btc 0.00009825
-                        payload: vec![],
                         keypath: vec![48 + HARDENED, bip44_coin, 0 + HARDENED, 2 + HARDENED, 1, 0],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                     pb::BtcSignOutputRequest {
                         ours: false,
@@ -1297,9 +1386,7 @@ mod tests {
                             0x83, 0xe7, 0x57, 0x84, 0x67, 0x25, 0xa3, 0xf6, 0x23, 0xae, 0xc2, 0x09,
                             0x76, 0xd3, 0x0e, 0x29, 0xb0, 0xd4, 0xb3, 0x5b,
                         ],
-                        keypath: vec![],
-                        script_config_index: 0,
-                        payment_request_index: None,
+                        ..Default::default()
                     },
                 ],
                 locktime: 1663289,
@@ -1339,6 +1426,10 @@ mod tests {
                 num_outputs: self.outputs.len() as _,
                 locktime: self.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: self
+                    .outputs
+                    .iter()
+                    .any(|output| output.silent_payment.is_some()),
             }
         }
 
@@ -1360,6 +1451,7 @@ mod tests {
                 num_outputs: self.outputs.len() as _,
                 locktime: self.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: false,
             }
         }
 
@@ -1452,6 +1544,7 @@ mod tests {
             num_outputs: 1,
             locktime: 0,
             format_unit: FormatUnit::Default as _,
+            contains_silent_payment_outputs: false,
         };
 
         {
@@ -1621,6 +1714,7 @@ mod tests {
                     num_outputs: 1,
                     locktime: 0,
                     format_unit: FormatUnit::Default as _,
+                    contains_silent_payment_outputs: false,
                 })),
                 Err(Error::InvalidInput)
             );
@@ -2310,6 +2404,70 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_silent_payment_output() {
+        let transaction =
+            alloc::rc::Rc::new(core::cell::RefCell::new(Transaction::new(pb::BtcCoin::Btc)));
+
+        // Make an input a P2TR input to verify the right (tweaked) private key is used in the
+        // derivation of the silent payment output.
+        transaction.borrow_mut().inputs[0].input.script_config_index = 1;
+        transaction.borrow_mut().inputs[0].input.keypath[0] = 86 + HARDENED;
+
+        // Make first output a silent payment output.
+        transaction.borrow_mut().outputs[0].r#type = pb::BtcOutputType::P2tr as _;
+        transaction.borrow_mut().outputs[0].payload = b"\x7b\x91\x01\xd6\x0c\x64\x61\xff\x3e\x18\xf0\x83\x2e\x7f\x1e\x95\x20\x84\x20\x50\x62\xd7\xe0\xb7\xb0\x88\x12\xc2\x64\xcf\xe7\x13".to_vec();
+        transaction.borrow_mut().outputs[0].silent_payment =
+            Some(pb::btc_sign_output_request::SilentPayment {
+                address: "sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv".into(),
+            });
+        //mock_host_responder(transaction.clone());
+        let tx = transaction.clone();
+        *crate::hww::MOCK_NEXT_REQUEST.0.borrow_mut() = Some(Box::new(
+            move |response: Response| {
+                let next = extract_next(&response);
+
+                if NextType::try_from(next.r#type).unwrap() == NextType::Output && next.index == 1 {
+                    assert_eq!(next.generated_output_pkscript.as_slice(), b"\x51\x20\x7b\x91\x01\xd6\x0c\x64\x61\xff\x3e\x18\xf0\x83\x2e\x7f\x1e\x95\x20\x84\x20\x50\x62\xd7\xe0\xb7\xb0\x88\x12\xc2\x64\xcf\xe7\x13");
+                }
+                Ok(tx.borrow().make_host_request(response))
+            },
+        ));
+
+        static mut UI_COUNTER: u32 = 0;
+        mock(Data {
+            ui_transaction_address_create: Some(Box::new(|amount, address| unsafe {
+                UI_COUNTER += 1;
+                if UI_COUNTER == 1 {
+                    assert_eq!(
+                        address,
+                        "sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv"
+                    );
+                    assert_eq!(amount, "1.00000000 BTC");
+                }
+                true
+            })),
+            ui_transaction_fee_create: Some(Box::new(|_total, _fee, _longtouch| true)),
+            ui_confirm_create: Some(Box::new(move |_params| true)),
+            ..Default::default()
+        });
+        mock_unlocked();
+
+        let mut init_request = transaction.borrow().init_request();
+        init_request
+            .script_configs
+            .push(pb::BtcScriptConfigWithKeypath {
+                script_config: Some(pb::BtcScriptConfig {
+                    config: Some(pb::btc_script_config::Config::SimpleType(
+                        pb::btc_script_config::SimpleType::P2tr as _,
+                    )),
+                }),
+                keypath: vec![86 + HARDENED, 0 + HARDENED, 10 + HARDENED],
+            });
+        assert!(block_on(process(&init_request)).is_ok());
+        assert!(unsafe { UI_COUNTER >= 1 });
+    }
+
     // Test an output that is marked ours but is not a change output by keypath.
     #[test]
     fn test_our_non_change_output() {
@@ -2642,6 +2800,7 @@ mod tests {
                 num_outputs: tx.outputs.len() as _,
                 locktime: tx.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: false,
             }
         };
         let result = block_on(process(&init_request));
@@ -2703,6 +2862,7 @@ mod tests {
                 num_outputs: tx.outputs.len() as _,
                 locktime: tx.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: false,
             }
         };
         assert_eq!(block_on(process(&init_request)), Err(Error::InvalidInput));
@@ -2769,6 +2929,7 @@ mod tests {
                 num_outputs: tx.outputs.len() as _,
                 locktime: tx.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: false,
             }
         };
         let result = block_on(process(&init_request));
@@ -2845,6 +3006,7 @@ mod tests {
                 num_outputs: tx.outputs.len() as _,
                 locktime: tx.locktime,
                 format_unit: FormatUnit::Default as _,
+                contains_silent_payment_outputs: false,
             }
         };
         let result = block_on(process(&init_request));

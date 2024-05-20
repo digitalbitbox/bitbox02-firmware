@@ -112,6 +112,7 @@ message BTCSignInitRequest {
     SAT = 1;
   }
   FormatUnit format_unit = 8;
+  bool contains_silent_payment_outputs = 9;
 }
 
 message BTCSignNextResponse {
@@ -135,6 +136,7 @@ message BTCSignNextResponse {
   // Previous tx's input/output index in case of PREV_INPUT or PREV_OUTPUT, for the input at `index`.
   uint32 prev_index = 5;
   AntiKleptoSignerCommitment anti_klepto_signer_commitment = 6;
+  bytes generated_output_pkscript = 7;
 }
 
 message BTCSignInputRequest {
@@ -158,6 +160,10 @@ enum BTCOutputType {
 }
 
 message BTCSignOutputRequest {
+  // https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki
+  message SilentPayment {
+    string address = 1;
+  }
   bool ours = 1;
   BTCOutputType type = 2; // if ours is false
   // 20 bytes for p2pkh, p2sh, pw2wpkh. 32 bytes for p2wsh.
@@ -167,6 +173,9 @@ message BTCSignOutputRequest {
   // If ours is true. References a script config from BTCSignInitRequest
   uint32 script_config_index = 6;
   optional uint32 payment_request_index = 7;
+    // If provided, `type` must be `P2TR` and the payload must be empty. The output's pkScript is
+  // returned BTCSignNextResponse.
+  SilentPayment silent_payment = 8;
 }
 
 message BTCScriptConfigRegistration {

@@ -27,6 +27,9 @@ util = {path = "../util"}
 zeroize = { workspace = true }
 lazy_static = { workspace = true, optional = true }
 
+[dev-dependencies]
+hex = { workspace = true }
+
 [features]
 # Only to be enabled in unit tests.
 testing = ["lazy_static"]

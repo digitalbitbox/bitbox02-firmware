@@ -303,6 +303,12 @@ USE_RESULT bool keystore_secp256k1_schnorr_bip86_sign(
     const uint8_t* msg32,
     uint8_t* sig64_out);
 
+USE_RESULT bool keystore_secp256k1_get_private_key(
+    const uint32_t* keypath,
+    size_t keypath_len,
+    bool tweak_bip86,
+    uint8_t* key_out);
+
 #ifdef TESTING
 /**
  * convenience to mock the keystore state (locked, seed) in tests.

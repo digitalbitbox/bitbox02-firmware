@@ -64,6 +64,7 @@ name = "bitbox02"
 version = "0.1.0"
 dependencies = [
  "bitbox02-sys",
+ "hex",
  "lazy_static",
  "util",
  "zeroize",
@@ -105,6 +106,7 @@ dependencies = [
  "prost",
  "sha2",
  "sha3",
+ "streaming-silent-payments",
  "util",
  "zeroize",
 ]
@@ -695,7 +697,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
 
 [[package]]
-name = "streaming-slient-payments"
+name = "streaming-silent-payments"
 version = "0.1.0"
 dependencies = [
  "bech32 0.11.0",
