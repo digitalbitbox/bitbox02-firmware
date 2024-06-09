@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//! Segregated Witness functionality - useful for enforcing parts of [`BIP-173`] and [`BIP-350`].
+//! Segregated Witness functionality - useful for enforcing parts of [BIP-173] and [BIP-350].
 //!
 //! [BIP-173]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki>
 //! [BIP-350]: <https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki>
@@ -8,6 +8,14 @@
 use core::fmt;
 
 use crate::primitives::gf32::Fe32;
+
+/// The maximum enforced string length of a segwit address.
+///
+/// The maximum length as specified in BIP-173, this is less than the 1023 character code length.
+/// This limit is based on empirical error-correcting properties. See ["Checksum design"] section.
+///
+/// ["Checksum design"]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#user-content-Checksum_design>
+pub const MAX_STRING_LENGTH: usize = 90;
 
 /// The field element representing segwit version 0.
 pub const VERSION_0: Fe32 = Fe32::Q;
@@ -55,11 +63,12 @@ pub fn validate_witness_program_length(
 /// Field element does not represent a valid witness version.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct InvalidWitnessVersionError(Fe32);
+pub struct InvalidWitnessVersionError(pub Fe32);
 
+#[rustfmt::skip]
 impl fmt::Display for InvalidWitnessVersionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "field element does not represent a valid witness version")
+        write!(f, "invalid segwit witness version: {} (bech32 character: '{}')", self.0.to_u8(), self.0)
     }
 }
 

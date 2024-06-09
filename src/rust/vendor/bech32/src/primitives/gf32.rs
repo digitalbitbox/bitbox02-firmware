@@ -2,13 +2,15 @@
 
 //! GF32 - Galois Field over 32 elements.
 //!
-//! Implements GF32 arithmetic, defined and encoded as in BIP-0173 "bech32".
+//! Implements GF32 arithmetic, defined and encoded as in [BIP-173] "bech32".
 //!
 //! > A finite field is a finite set which is a field; this means that multiplication, addition,
 //! > subtraction and division (excluding division by zero) are defined and satisfy the rules of
 //! > arithmetic known as the field axioms.
 //!
 //! ref: <https://en.wikipedia.org/wiki/Finite_field>
+//!
+//! [BIP-173]: <https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki>
 
 use core::convert::{Infallible, TryFrom};
 use core::{fmt, num, ops};
@@ -177,18 +179,30 @@ impl Fe32 {
     }
 
     /// Creates a field element from a single bech32 character.
+    ///
+    /// # Errors
+    ///
+    /// If the input char is not part of the bech32 alphabet.
     #[inline]
-    pub fn from_char(c: char) -> Result<Fe32, Error> {
+    pub fn from_char(c: char) -> Result<Fe32, FromCharError> {
+        use FromCharError::*;
+
         // i8::try_from gets a value in the range 0..=127 since char is unsigned.
-        let byte = i8::try_from(u32::from(c)).map_err(|_| Error::InvalidChar(c))?;
+        let byte = i8::try_from(u32::from(c)).map_err(|_| NotAscii(c))?;
         // Now we have a valid ASCII value cast is safe.
         let ascii = byte as usize;
         // We use -1 for any array element that is an invalid char to trigger error from u8::try_from
-        let u5 = u8::try_from(CHARS_INV[ascii]).map_err(|_| Error::InvalidChar(c))?;
+        let u5 = u8::try_from(CHARS_INV[ascii]).map_err(|_| Invalid(c))?;
+
         Ok(Fe32(u5))
     }
 
-    pub(crate) fn from_char_unchecked(c: u8) -> Fe32 { Fe32(CHARS_INV[usize::from(c)] as u8) }
+    /// Creates a field element from a single bech32 character.
+    ///
+    /// # Panics
+    ///
+    /// If the input character is not part of the bech32 alphabet.
+    pub fn from_char_unchecked(c: u8) -> Fe32 { Fe32(CHARS_INV[usize::from(c)] as u8) }
 
     /// Converts the field element to a lowercase bech32 character.
     #[inline]
@@ -245,7 +259,7 @@ macro_rules! impl_try_from {
     ($($ty:ident)+) => {
         $(
             impl TryFrom<$ty> for Fe32 {
-                type Error = Error;
+                type Error = TryFromError;
 
                 /// Tries to create an [`Fe32`] type from a signed source number type.
                 ///
@@ -256,7 +270,7 @@ macro_rules! impl_try_from {
                 fn try_from(value: $ty) -> Result<Self, Self::Error> {
                     let byte = u8::try_from(value)?;
                     if byte > 31 {
-                        Err(Error::InvalidByte(byte))?;
+                        Err(TryFromError::InvalidByte(byte))?;
                     }
                     Ok(Fe32(byte))
                 }
@@ -324,48 +338,77 @@ impl ops::DivAssign for Fe32 {
     fn div_assign(&mut self, other: Fe32) { *self = *self / other; }
 }
 
-/// A galois field related error.
+/// A galois field error when converting from a character.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[non_exhaustive]
-pub enum Error {
-    /// Tried to interpret an integer as a GF32 element but it could not be converted to an u8.
-    NotAByte(num::TryFromIntError),
-    /// Tried to interpret a byte as a GF32 element but its numeric value was outside of [0, 32).
-    InvalidByte(u8),
+pub enum FromCharError {
+    /// Tried to interpret a character as a GF32 element but it is not an ASCII character.
+    NotAscii(char),
     /// Tried to interpret a character as a GF32 element but it is not part of the bech32 character set.
-    InvalidChar(char),
+    Invalid(char),
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for FromCharError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Error::*;
+        use FromCharError::*;
 
         match *self {
-            NotAByte(ref e) => write_err!(f, "invalid field element"; e),
-            InvalidByte(ref b) => write!(f, "invalid byte in field element: {:#04x}", b),
-            InvalidChar(ref c) => write!(f, "invalid char in field element: {}", c),
+            NotAscii(c) => write!(f, "non-ascii char in field element: {}", c),
+            Invalid(c) => write!(f, "invalid char in field element: {}", c),
         }
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for Error {
+impl std::error::Error for FromCharError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        use Error::*;
+        use FromCharError::*;
 
         match *self {
-            NotAByte(ref e) => Some(e),
-            InvalidByte(_) | InvalidChar(_) => None,
+            NotAscii(_) | Invalid(_) => None,
         }
     }
 }
 
-impl From<num::TryFromIntError> for Error {
-    #[inline]
-    fn from(e: num::TryFromIntError) -> Self { Error::NotAByte(e) }
+/// A galois field error when converting from an integer.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
+pub enum TryFromError {
+    /// Tried to interpret an integer as a GF32 element but it could not be converted to an u8.
+    NotAByte(num::TryFromIntError),
+    /// Tried to interpret a byte as a GF32 element but its numeric value was outside of [0, 32).
+    InvalidByte(u8),
 }
 
-impl From<Infallible> for Error {
+impl fmt::Display for TryFromError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use TryFromError::*;
+
+        match *self {
+            NotAByte(ref e) => write_err!(f, "invalid field element"; e),
+            InvalidByte(ref b) => write!(f, "invalid byte in field element: {:#04x}", b),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for TryFromError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        use TryFromError::*;
+
+        match *self {
+            NotAByte(ref e) => Some(e),
+            InvalidByte(_) => None,
+        }
+    }
+}
+
+impl From<num::TryFromIntError> for TryFromError {
+    #[inline]
+    fn from(e: num::TryFromIntError) -> Self { Self::NotAByte(e) }
+}
+
+impl From<Infallible> for TryFromError {
     #[inline]
     fn from(i: Infallible) -> Self { match i {} }
 }

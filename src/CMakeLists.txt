@@ -335,6 +335,7 @@ add_custom_target(rust-bindgen
     --allowlist-function keystore_lock
     --allowlist-function keystore_create_and_store_seed
     --allowlist-function keystore_copy_seed
+    --allowlist-function keystore_secp256k1_get_private_key
     --allowlist-function keystore_get_bip39_mnemonic
     --allowlist-function keystore_get_bip39_word
     --allowlist-function keystore_get_ed25519_seed

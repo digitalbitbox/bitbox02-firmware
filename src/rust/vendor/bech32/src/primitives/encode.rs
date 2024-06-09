@@ -7,7 +7,9 @@
 //! prepending HRP strings etc.
 //!
 //! In general, directly using these adaptors is not very ergonomic, and users are recommended to
-//! instead use the higher-level functions at the root of this crate.
+//! instead use the crate level API.
+//!
+//! WARNING: This module does not enforce the maximum length of an encoded bech32 string (90 chars).
 //!
 //! # Examples
 //!
@@ -111,6 +113,14 @@ where
         CharIter::new(self.hrp, witver_iter)
     }
 
+    /// Returns an iterator that yields the bech32 encoded address as field ASCII characters, as
+    /// byte values.
+    #[inline]
+    pub fn bytes(self) -> ByteIter<'hrp, I, Ck> {
+        let char_iter = self.chars();
+        ByteIter::new(char_iter)
+    }
+
     /// Returns an iterator that yields the field elements that go into the checksum, as well as the checksum at the end.
     ///
     /// Each field element yielded has been input into the checksum algorithm (including the HRP as it is fed into the algorithm).
@@ -183,7 +193,7 @@ where
     /// Adapts the `Fe32Iter` iterator to yield characters representing the bech32 encoding.
     #[inline]
     pub fn new(hrp: &'hrp Hrp, data: WitnessVersionIter<I>) -> Self {
-        let checksummed = Checksummed::new_hrp(hrp, data);
+        let checksummed = Checksummed::new_hrp(*hrp, data);
         Self { hrp_iter: Some(hrp.lowercase_char_iter()), checksummed }
     }
 }
@@ -235,6 +245,43 @@ where
     }
 }
 
+/// Iterator adaptor which takes a stream of ASCII field elements (an encoded string) and yields a stream of bytes.
+///
+/// This is equivalent to using the `CharsIter` and the casting each character to a byte. Doing
+/// so is technically sound because we only yield ASCII characters but it makes for ugly code so
+/// we provide this iterator also.
+pub struct ByteIter<'hrp, I, Ck>
+where
+    I: Iterator<Item = Fe32>,
+    Ck: Checksum,
+{
+    char_iter: CharIter<'hrp, I, Ck>,
+}
+
+impl<'hrp, I, Ck> ByteIter<'hrp, I, Ck>
+where
+    I: Iterator<Item = Fe32>,
+    Ck: Checksum,
+{
+    /// Adapts the `CharIter` iterator to yield bytes representing the bech32 encoding as ASCII bytes.
+    #[inline]
+    pub fn new(char_iter: CharIter<'hrp, I, Ck>) -> Self { Self { char_iter } }
+}
+
+impl<'a, I, Ck> Iterator for ByteIter<'a, I, Ck>
+where
+    I: Iterator<Item = Fe32>,
+    Ck: Checksum,
+{
+    type Item = u8;
+
+    #[inline]
+    fn next(&mut self) -> Option<u8> { self.char_iter.next().map(|c| c as u8) }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) { self.char_iter.size_hint() }
+}
+
 /// Iterator adaptor for a checksummed iterator that inputs the HRP into the checksum algorithm
 /// before yielding the HRP as field elements followed by the data then checksum.
 pub struct Fe32Iter<'hrp, I, Ck>
@@ -258,7 +305,7 @@ where
     #[inline]
     pub fn new(hrp: &'hrp Hrp, data: WitnessVersionIter<I>) -> Self {
         let hrp_iter = HrpFe32Iter::new(hrp);
-        let checksummed = Checksummed::new_hrp(hrp, data);
+        let checksummed = Checksummed::new_hrp(*hrp, data);
         Self { hrp_iter: Some(hrp_iter), checksummed }
     }
 }
@@ -341,5 +388,20 @@ mod tests {
 
         let checksummed_len = 2 + 1 + 1 + char_len + 6; // bc + SEP + Q + chars + checksum
         assert_eq!(iter.size_hint().0, checksummed_len);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn hrpstring_iter_bytes() {
+        let hrp = Hrp::parse_unchecked("bc");
+        let fes = DATA.iter().copied().bytes_to_fes();
+        let iter = fes.with_checksum::<Bech32>(&hrp).with_witness_version(Fe32::Q);
+
+        let chars = iter.clone().chars();
+        let bytes = iter.bytes();
+
+        for (c, b) in chars.zip(bytes) {
+            assert_eq!(c as u8, b)
+        }
     }
 }

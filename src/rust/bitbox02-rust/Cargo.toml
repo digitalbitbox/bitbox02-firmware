@@ -32,6 +32,7 @@ util = { path = "../util" }
 erc20_params = { path = "../erc20_params", optional = true }
 binascii = { version = "0.1.4", default-features = false, features = ["encode"] }
 bitbox02-noise = {path = "../bitbox02-noise"}
+streaming-silent-payments = {path = "../streaming-silent-payments"}
 hex = { workspace = true }
 sha2 = { workspace = true }
 sha3 = { workspace = true, optional = true }
@@ -41,7 +42,7 @@ num-bigint = { workspace = true, optional = true }
 num-traits = { version = "0.2", default-features = false, optional = true }
 # If you change this, also change src/rust/.cargo/config.toml.
 bip32-ed25519 = { git = "https://github.com/digitalbitbox/rust-bip32-ed25519", tag = "v0.1.2", optional = true }
-bech32 = { version = "0.10.0-beta", default-features = false, optional = true }
+bech32 = { workspace = true, optional = true }
 blake2 = { version = "0.10.6", default-features = false, optional = true }
 minicbor = { version = "0.24.0", default-features = false, features = ["alloc"], optional = true }
 crc = { version = "3.0.1", optional = true }

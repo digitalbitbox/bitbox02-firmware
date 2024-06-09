@@ -33,3 +33,10 @@ Alternatively add symlinks in your `.git/hooks` directory to any of the githooks
 
 We use a custom Rust compiler configuration conditional to guard the benchmark code. To run the
 benchmarks use: `RUSTFLAGS='--cfg=bench' cargo +nightly bench`.
+
+
+## API changes
+
+All PRs that change the public API of `rust-bech32` must include a patch to the
+`api/` text files. For PRs that include API changes, add a separate patch to the PR
+that is the diff created by running `contrib/check-for-api-changes.sh`.

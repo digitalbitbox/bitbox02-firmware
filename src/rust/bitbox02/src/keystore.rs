@@ -224,6 +224,24 @@ pub fn encode_xpub_at_keypath(keypath: &[u32]) -> Result<Vec<u8>, ()> {
     }
 }
 
+pub fn secp256k1_get_private_key(
+    keypath: &[u32],
+    tweak_bip86: bool,
+) -> Result<zeroize::Zeroizing<Vec<u8>>, ()> {
+    let mut key = zeroize::Zeroizing::new(vec![0u8; 32]);
+    match unsafe {
+        bitbox02_sys::keystore_secp256k1_get_private_key(
+            keypath.as_ptr(),
+            keypath.len() as _,
+            tweak_bip86,
+            key.as_mut_ptr(),
+        )
+    } {
+        true => Ok(key),
+        false => Err(()),
+    }
+}
+
 pub struct SignResult {
     pub signature: [u8; 64],
     pub recid: u8,
@@ -361,6 +379,7 @@ pub fn secp256k1_schnorr_bip86_pubkey(pubkey33: &[u8]) -> Result<[u8; 32], ()> {
 mod tests {
     use super::*;
     use crate::testing::{mock_unlocked, mock_unlocked_using_mnemonic, TEST_MNEMONIC};
+    use util::bip32::HARDENED;
 
     #[test]
     fn test_bip39_mnemonic_to_seed() {
@@ -490,7 +509,7 @@ mod tests {
             "income soft level reunion height pony crane use unfold win keen satisfy",
         );
         assert_eq!(
-            bip85_bip39(12, util::bip32::HARDENED - 1).unwrap().as_ref() as &str,
+            bip85_bip39(12, HARDENED - 1).unwrap().as_ref() as &str,
             "carry build nerve market domain energy mistake script puzzle replace mixture idea",
         );
         assert_eq!(
@@ -505,7 +524,7 @@ mod tests {
         // Invalid number of words.
         assert!(bip85_bip39(10, 0).is_err());
         // Index too high.
-        assert!(bip85_bip39(12, util::bip32::HARDENED).is_err());
+        assert!(bip85_bip39(12, HARDENED).is_err());
     }
 
     #[test]
@@ -527,11 +546,39 @@ mod tests {
             b"\xe7\xd9\xce\x75\xf8\xcb\x17\x57\x0e\x66\x54\x17\xb4\x7f\xa0\xbe",
         );
         assert_eq!(
-            bip85_ln(util::bip32::HARDENED - 1).unwrap().as_slice(),
+            bip85_ln(HARDENED - 1).unwrap().as_slice(),
             b"\x1f\x3b\x75\xea\x25\x27\x49\x70\x0a\x1e\x45\x34\x69\x14\x8c\xa6",
         );
 
         // Index too high.
-        assert!(bip85_ln(util::bip32::HARDENED).is_err());
+        assert!(bip85_ln(HARDENED).is_err());
+    }
+
+    #[test]
+    fn test_secp256k1_get_private_key() {
+        lock();
+        let keypath = &[84 + HARDENED, 0 + HARDENED, 0 + HARDENED, 0, 0];
+        assert!(secp256k1_get_private_key(keypath, false).is_err());
+
+        mock_unlocked_using_mnemonic(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "",
+        );
+
+        assert_eq!(
+            hex::encode(secp256k1_get_private_key(keypath, false).unwrap()),
+            "4604b4b710fe91f584fff084e1a9159fe4f8408fff380596a604948474ce4fa3"
+        );
+
+        // See first test vector in
+        // https://github.com/bitcoin/bips/blob/edffe529056f6dfd33d8f716fb871467c3c09263/bip-0086.mediawiki#test-vectors
+        // The below privte key's public key is: a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c.
+        assert_eq!(
+            hex::encode(
+                secp256k1_get_private_key(&[86 + HARDENED, 0 + HARDENED, 0 + HARDENED, 0, 0], true)
+                    .unwrap()
+            ),
+            "eaac016f36e8c18347fbacf05ab7966708fbfce7ce3bf1dc32a09dd0645db038",
+        );
     }
 }
