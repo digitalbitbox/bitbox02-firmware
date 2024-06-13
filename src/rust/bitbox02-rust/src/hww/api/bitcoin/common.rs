@@ -1,4 +1,4 @@
-// Copyright 2022 Shift Crypto AG
+// Copyright 2022-2024 Shift Crypto AG
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -152,6 +152,7 @@ impl Payload {
     /// derived using keypath m/48'/1'/0'/3'/11/5 derives the payload for
     /// wsh(and_v(v:pk(@0/11/5),pk(@1/21/5))).
     pub fn from_policy(
+        params: &Params,
         policy: &super::policies::ParsedPolicy,
         keypath: &[u32],
     ) -> Result<Self, Error> {
@@ -161,6 +162,16 @@ impl Payload {
                 data: Sha256::digest(wsh.witness_script()).to_vec(),
                 output_type: BtcOutputType::P2wsh,
             }),
+            super::policies::Descriptor::Tr(tr) => {
+                if params.taproot_support {
+                    Ok(Payload {
+                        data: tr.output_key().to_vec(),
+                        output_type: BtcOutputType::P2tr,
+                    })
+                } else {
+                    Err(Error::InvalidInput)
+                }
+            }
         }
     }
 
@@ -182,7 +193,7 @@ impl Payload {
                 keypath[keypath.len() - 2],
                 keypath[keypath.len() - 1],
             ),
-            ValidatedScriptConfig::Policy(policy) => Self::from_policy(policy, keypath),
+            ValidatedScriptConfig::Policy(policy) => Self::from_policy(params, policy, keypath),
         }
     }
 

@@ -252,6 +252,10 @@ fn is_taproot(script_config_account: &ValidatedScriptConfigWithKeypath) -> bool 
     matches!(
         script_config_account.config,
         ValidatedScriptConfig::SimpleType(SimpleType::P2tr)
+            | ValidatedScriptConfig::Policy(super::policies::ParsedPolicy {
+                descriptor: super::policies::Descriptor::Tr(_),
+                ..
+            })
     )
 }
 
@@ -295,6 +299,8 @@ fn sighash_script(
             ..
         } => match policy.derive_at_keypath(keypath)? {
             super::policies::Descriptor::Wsh(wsh) => Ok(wsh.witness_script()),
+            // This function is only called for SegWit v0 inputs.
+            _ => Err(Error::Generic),
         },
     }
 }
@@ -2888,7 +2894,17 @@ mod tests {
     #[test]
     fn test_policy() {
         let transaction = alloc::rc::Rc::new(core::cell::RefCell::new(Transaction::new_policy()));
-        mock_host_responder(transaction.clone());
+        // Check that previous transactions are streamed, as not all inputs are taproot.
+        static mut PREVTX_REQUESTED: bool = false;
+        let tx = transaction.clone();
+        *crate::hww::MOCK_NEXT_REQUEST.0.borrow_mut() =
+            Some(Box::new(move |response: Response| {
+                let next = extract_next(&response);
+                if NextType::try_from(next.r#type).unwrap() == NextType::PrevtxInit {
+                    unsafe { PREVTX_REQUESTED = true }
+                }
+                Ok(tx.borrow().make_host_request(response))
+            }));
 
         static mut UI_COUNTER: u32 = 0;
         mock(Data {
@@ -2972,6 +2988,7 @@ mod tests {
             "sudden tenant fault inject concert weather maid people chunk youth stumble grit",
             "",
         );
+        bitbox02::random::mock_reset();
         // For the policy registration below.
         mock_memory();
 
@@ -3013,6 +3030,72 @@ mod tests {
             unsafe { UI_COUNTER },
             transaction.borrow().total_confirmations
         );
+        assert!(unsafe { PREVTX_REQUESTED });
+    }
+
+    /// Same as `test_policy()`, but for a tr() Taproot policy.
+    /// We check that the previous transactions are not streamed as they are not needed for Taproot.
+    #[test]
+    fn test_policy_tr() {
+        let transaction = alloc::rc::Rc::new(core::cell::RefCell::new(Transaction::new_policy()));
+
+        let tx = transaction.clone();
+        // Check that previous transactions are not streamed, as all inputs are taproot.
+        static mut PREVTX_REQUESTED: bool = false;
+        *crate::hww::MOCK_NEXT_REQUEST.0.borrow_mut() =
+            Some(Box::new(move |response: Response| {
+                let next = extract_next(&response);
+                if NextType::try_from(next.r#type).unwrap() == NextType::PrevtxInit {
+                    unsafe { PREVTX_REQUESTED = true }
+                }
+                Ok(tx.borrow().make_host_request(response))
+            }));
+
+        mock_default_ui();
+
+        mock_unlocked_using_mnemonic(
+            "sudden tenant fault inject concert weather maid people chunk youth stumble grit",
+            "",
+        );
+        bitbox02::random::mock_reset();
+        // For the policy registration below.
+        mock_memory();
+
+        let keypath_account = &[48 + HARDENED, 1 + HARDENED, 0 + HARDENED, 3 + HARDENED];
+
+        let policy = pb::btc_script_config::Policy {
+            policy: "tr(@0/**,pk(@1/**))".into(),
+            keys: vec![
+                pb::KeyOriginInfo {
+                    root_fingerprint: crate::keystore::root_fingerprint().unwrap(),
+                    keypath: keypath_account.to_vec(),
+                    xpub: Some(crate::keystore::get_xpub(keypath_account).unwrap().into()),
+                },
+                pb::KeyOriginInfo {
+                    root_fingerprint: vec![],
+                    keypath: vec![],
+                    xpub: Some(parse_xpub("tpubDFGkUYFfEhAALSXQ9VNssUq71HWYLWLK7sAEqFyqJBQxQ4uGSBW1RSBkoVfijE6iEHZFs2kZrVzzV1nZCSEXYKudtsfEWcWKVXvjjLeRyd8").unwrap()),
+                },
+            ],
+        };
+
+        // Register policy.
+        let policy_hash = super::super::policies::get_hash(pb::BtcCoin::Tbtc, &policy).unwrap();
+        bitbox02::memory::multisig_set_by_hash(&policy_hash, "test policy account name").unwrap();
+
+        let result = block_on(process(
+            &transaction
+                .borrow()
+                .init_request_policy(policy, keypath_account),
+        ));
+        match result {
+            Ok(Response::BtcSignNext(next)) => {
+                assert!(next.has_signature);
+                assert_eq!(&next.signature, b"\x49\xec\x2b\xee\x76\xc3\x5f\xb2\xe7\x0f\xf8\x6d\x7e\xc7\x71\xbf\xd6\x91\x8e\xac\x0e\x06\xf9\x1b\xfc\x06\xbc\x5f\xdb\x99\x91\xcc\xfa\x88\x93\x4e\x4e\x2e\x51\xb3\x72\xba\xcd\x40\x43\xcc\xb9\xa5\xa2\x65\x05\xe1\xba\xb2\xe5\x9e\x0a\x47\x63\x9a\xf4\x7c\xfb\xaf");
+            }
+            _ => panic!("wrong result"),
+        }
+        assert!(unsafe { !PREVTX_REQUESTED });
     }
 
     /// Test that a policy with derivations other than `/**` work.
