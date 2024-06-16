@@ -17,6 +17,7 @@ use super::Error;
 
 use super::common::format_amount;
 use super::payment_request;
+use super::policies::TaprootSpendInfo;
 use super::script::serialize_varint;
 use super::script_configs::{ValidatedScriptConfig, ValidatedScriptConfigWithKeypath};
 use super::{bip143, bip341, common, keypath};
@@ -29,6 +30,7 @@ use alloc::vec::Vec;
 use pb::request::Request;
 use pb::response::Response;
 
+use bitcoin::hashes::Hash;
 use pb::btc_script_config::SimpleType;
 use pb::btc_sign_init_request::FormatUnit;
 use pb::btc_sign_next_response::Type as NextType;
@@ -943,6 +945,28 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
                 return Err(Error::InvalidInput);
             }
 
+            let spend_info = match &script_config_account.config {
+                ValidatedScriptConfig::SimpleType(SimpleType::P2tr) => {
+                    // This is a BIP-86 spend, so we tweak the private key by the hash of the public
+                    // key only, as there is no Taproot merkle root.
+                    let xpub = xpub_cache.get_xpub(&tx_input.keypath)?;
+                    let pubkey = bitcoin::PublicKey::from_slice(xpub.public_key())
+                        .map_err(|_| Error::Generic)?;
+                    TaprootSpendInfo::KeySpend(bitcoin::TapTweakHash::from_key_and_tweak(
+                        pubkey.into(),
+                        None,
+                    ))
+                }
+                ValidatedScriptConfig::Policy(policy) => {
+                    // Get the Taproot tweak based on whether we spend using the internal key (key
+                    // path spend) or if we spend using a leaf script. For key path spends, we must
+                    // first tweak the private key to match the Taproot output key. For leaf
+                    // scripts, we do not tweak.
+
+                    policy.taproot_spend_info(&mut xpub_cache, &tx_input.keypath)?
+                }
+                _ => return Err(Error::Generic),
+            };
             let sighash = bip341::sighash(&bip341::Args {
                 version: request.version,
                 locktime: request.locktime,
@@ -952,11 +976,24 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
                 hash_sequences: hash_sequence.into(),
                 hash_outputs: hash_outputs.into(),
                 input_index,
+                tapleaf_hash: if let TaprootSpendInfo::ScriptSpend(leaf_hash) = &spend_info {
+                    Some(leaf_hash.to_byte_array())
+                } else {
+                    None
+                },
             });
+
             next_response.next.has_signature = true;
-            next_response.next.signature =
-                bitbox02::keystore::secp256k1_schnorr_bip86_sign(&tx_input.keypath, &sighash)?
-                    .to_vec();
+            next_response.next.signature = bitbox02::keystore::secp256k1_schnorr_sign(
+                &tx_input.keypath,
+                &sighash,
+                if let TaprootSpendInfo::KeySpend(tweak_hash) = &spend_info {
+                    Some(tweak_hash.as_byte_array())
+                } else {
+                    None
+                },
+            )?
+            .to_vec();
         } else {
             // Sign all other supported inputs.
 
@@ -3091,7 +3128,7 @@ mod tests {
         match result {
             Ok(Response::BtcSignNext(next)) => {
                 assert!(next.has_signature);
-                assert_eq!(&next.signature, b"\x49\xec\x2b\xee\x76\xc3\x5f\xb2\xe7\x0f\xf8\x6d\x7e\xc7\x71\xbf\xd6\x91\x8e\xac\x0e\x06\xf9\x1b\xfc\x06\xbc\x5f\xdb\x99\x91\xcc\xfa\x88\x93\x4e\x4e\x2e\x51\xb3\x72\xba\xcd\x40\x43\xcc\xb9\xa5\xa2\x65\x05\xe1\xba\xb2\xe5\x9e\x0a\x47\x63\x9a\xf4\x7c\xfb\xaf");
+                assert_eq!(&next.signature, b"\xf4\xb7\x60\xfa\x7f\x1c\xa8\xa0\x01\x49\xbf\x43\x9c\x07\xdc\xd3\xaa\xfe\x4c\x98\x11\x16\x07\xce\xce\x4b\x80\x06\x6f\x7e\xf2\xe4\x40\x6d\x18\x83\x19\x90\xde\xf0\xbf\x4a\x5b\x56\x47\xdc\x42\x6e\xf1\xf7\x49\x52\x4a\xdf\x0a\x68\x96\x84\x4c\xd9\x0b\x79\x60\x31");
             }
             _ => panic!("wrong result"),
         }

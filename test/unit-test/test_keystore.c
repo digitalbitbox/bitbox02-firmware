@@ -703,7 +703,6 @@ static void _test_keystore_secp256k1_schnorr_bip86_sign(void** state)
         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon "
         "about",
         "");
-    uint8_t pubkey[32] = {0};
     const uint32_t keypath[] = {
         86 + BIP32_INITIAL_HARDENED_CHILD,
         0 + BIP32_INITIAL_HARDENED_CHILD,
@@ -714,17 +713,33 @@ static void _test_keystore_secp256k1_schnorr_bip86_sign(void** state)
     struct ext_key xpub = {0};
     assert_true(keystore_get_xpub(keypath, 5, &xpub));
 
-    assert_true(keystore_secp256k1_schnorr_bip86_pubkey(xpub.pub_key, pubkey));
     uint8_t msg[32] = {0};
     memset(msg, 0x88, sizeof(msg));
     uint8_t sig[64] = {0};
     uint8_t mock_aux_rand[32] = {0};
+
+    // Test without tweak
     will_return(__wrap_random_32_bytes, mock_aux_rand);
-    assert_true(keystore_secp256k1_schnorr_bip86_sign(keypath, 5, msg, sig));
+    assert_true(keystore_secp256k1_schnorr_sign(keypath, 5, msg, NULL, sig));
     const secp256k1_context* ctx = wally_get_secp_context();
-    secp256k1_xonly_pubkey pubkey_deserialized = {0};
-    assert_true(secp256k1_xonly_pubkey_parse(ctx, &pubkey_deserialized, pubkey));
-    assert_true(secp256k1_schnorrsig_verify(ctx, sig, msg, sizeof(msg), &pubkey_deserialized));
+    secp256k1_pubkey pubkey = {0};
+    assert_true(secp256k1_ec_pubkey_parse(ctx, &pubkey, xpub.pub_key, sizeof(xpub.pub_key)));
+    secp256k1_xonly_pubkey xonly_pubkey = {0};
+    assert_true(secp256k1_xonly_pubkey_from_pubkey(ctx, &xonly_pubkey, NULL, &pubkey));
+    assert_true(secp256k1_schnorrsig_verify(ctx, sig, msg, sizeof(msg), &xonly_pubkey));
+
+    // Test with tweak
+    const uint8_t tweak[32] =
+        "\xa3\x9f\xb1\x63\xdb\xd9\xb5\xe0\x84\x0a\xf3\xcc\x1e\xe4\x1d\x5b\x31\x24\x5c\x5d\xd8\xd6"
+        "\xbd\xc3\xd0\x26\xd0\x9b\x89\x64\x99\x7c";
+    will_return(__wrap_random_32_bytes, mock_aux_rand);
+    assert_true(keystore_secp256k1_schnorr_sign(keypath, 5, msg, tweak, sig));
+    secp256k1_pubkey tweaked_pubkey = {0};
+    assert_true(secp256k1_xonly_pubkey_tweak_add(ctx, &tweaked_pubkey, &xonly_pubkey, tweak));
+    secp256k1_xonly_pubkey tweaked_xonly_pubkey = {0};
+    assert_true(
+        secp256k1_xonly_pubkey_from_pubkey(ctx, &tweaked_xonly_pubkey, NULL, &tweaked_pubkey));
+    assert_true(secp256k1_schnorrsig_verify(ctx, sig, msg, sizeof(msg), &tweaked_xonly_pubkey));
 }
 
 int main(void)

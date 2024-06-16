@@ -30,6 +30,9 @@ use miniscript::TranslatePk;
 
 use crate::bip32;
 use crate::workflow::confirm;
+use crate::xpubcache::Bip32XpubCache;
+
+use bitcoin::taproot::{LeafVersion, TapLeafHash, TapTweakHash};
 
 use sha2::{Digest, Sha256};
 
@@ -100,7 +103,8 @@ fn parse_wallet_policy_pk(pk: &str) -> Result<(usize, u32, u32), ()> {
 }
 
 /// Given policy pubkeys like `@0/<left;right>/*` and the keys list, determine if the given keypath
-/// is valid and whether it points to a receive or change address.
+/// is valid and whether it points to a receive or change address. We also return the matched
+/// pubkey.
 ///
 /// Example: pubkeys "@0/<10;11>/*" and "@1/<20;21>/*", with our key [fp/48'/1'/0'/3']xpub...],
 /// derived using keypath m/48'/1'/0'/3'/11/5 means that this is the address index 5 at the change
@@ -206,6 +210,24 @@ impl Tr<bitcoin::PublicKey> {
     pub fn output_key(&self) -> [u8; 32] {
         self.inner.spend_info().output_key().serialize()
     }
+
+    /// Returns the tap leaf hash (as defined in BIP341) of the leaf whose script contains the given
+    /// pubkey (serialized as a compressed pubkey). If the pubkey is not present in any leaf script,
+    /// None is returned.
+    ///
+    /// Note that we assume that each pubkey is unique according to BIP-388 and validated by
+    /// `validate_keys()`, so the leaf is unique.
+    fn get_leaf_hash_by_pubkey(&self, pk: &[u8; 33]) -> Option<TapLeafHash> {
+        for (_, ms) in self.inner.iter_scripts() {
+            if ms.iter_pk().any(|pk2| *pk == pk2.inner.serialize()) {
+                return Some(TapLeafHash::from_script(
+                    &ms.encode(),
+                    LeafVersion::TapScript,
+                ));
+            }
+        }
+        None
+    }
 }
 
 impl Tr<String> {
@@ -217,6 +239,11 @@ impl Tr<String> {
             .flat_map(|(_, ms)| ms.iter_pk())
             .chain(core::iter::once(self.inner.internal_key().clone()))
     }
+}
+
+pub enum TaprootSpendInfo {
+    KeySpend(TapTweakHash),
+    ScriptSpend(TapLeafHash),
 }
 
 /// See `ParsedPolicy`.
@@ -494,6 +521,44 @@ impl<'a> ParsedPolicy<'a> {
             keypath,
         )?;
         Ok(is_change)
+    }
+
+    /// Returns info needed to spend a Taproot UTXO at the given keypath.
+    ///
+    /// If the keypath points to the Taproot internal key, we return the necessary Taproot tweak to
+    /// spend using the Taproot key path.
+    ///
+    /// If th keypath points to a key used in a tap leaf script, we return the tap leaf hash (as
+    /// defined in BIP341), which is needed to in the sighash computation in the context of a
+    /// Taproot leaf script.
+    ///
+    /// This works because all keypaths are distinct per BIP-388, and checked by `validate_keys()`,
+    /// so they keypath alone is sufficient to figure out if we are using key path or script
+    /// path, and if the latter, which leaf exactly.
+    pub fn taproot_spend_info(
+        &self,
+        xpub_cache: &mut Bip32XpubCache,
+        keypath: &[u32],
+    ) -> Result<TaprootSpendInfo, Error> {
+        match self.derive_at_keypath(keypath)? {
+            Descriptor::Tr(tr) => {
+                let xpub = xpub_cache.get_xpub(keypath)?;
+                let is_keypath_spend =
+                    xpub.public_key() == tr.inner.internal_key().inner.serialize();
+
+                if is_keypath_spend {
+                    Ok(TaprootSpendInfo::KeySpend(
+                        tr.inner.spend_info().tap_tweak(),
+                    ))
+                } else {
+                    let leaf_hash = tr
+                        .get_leaf_hash_by_pubkey(xpub.public_key().try_into().unwrap())
+                        .ok_or(Error::InvalidInput)?;
+                    Ok(TaprootSpendInfo::ScriptSpend(leaf_hash))
+                }
+            }
+            _ => Err(Error::Generic),
+        }
     }
 }
 
@@ -979,6 +1044,23 @@ mod tests {
                     0 + HARDENED,
                     3 + HARDENED,
                     10,
+                    0,
+                ],
+            ),
+            Ok((false, 0))
+        );
+
+        assert_eq!(
+            get_change_and_address_index(
+                ["@0/<10;11>/*", "@0/<20;21>/*"].iter(),
+                &[our_key.clone()],
+                &[true],
+                &[
+                    48 + HARDENED,
+                    1 + HARDENED,
+                    0 + HARDENED,
+                    3 + HARDENED,
+                    20,
                     0,
                 ],
             ),
