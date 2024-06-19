@@ -21,6 +21,7 @@ use bitbox02::keystore;
 
 use crate::workflow::{confirm, status, transaction};
 
+use alloc::string::String;
 use alloc::vec::Vec;
 use pb::eth_response::Response;
 
@@ -88,6 +89,12 @@ impl<'a> Transaction<'a> {
         match self {
             Transaction::Legacy(legacy) => Ok(Some(pb::EthCoin::try_from(legacy.coin)?)),
             Transaction::Eip1559(_) => Ok(None),
+        }
+    }
+    fn address(&self) -> String {
+        match self {
+            Transaction::Legacy(legacy) => legacy.address.clone(),
+            Transaction::Eip1559(eip1559) => eip1559.address.clone(),
         }
     }
 }
@@ -203,7 +210,12 @@ async fn verify_erc20_transaction(
 ) -> Result<(), Error> {
     let erc20_params = erc20_params::get(params.chain_id, parse_recipient(request.recipient())?);
     let formatted_fee = parse_fee(request, params).format();
-    let recipient_address = super::address::from_pubkey_hash(&erc20_recipient);
+    let recipient_address_verify = super::address::from_pubkey_hash(&erc20_recipient);
+    let recipient_address = format!("0x{}", hex::encode(&erc20_recipient));
+    if recipient_address.to_lowercase() != recipient_address_verify.to_lowercase() {
+        return Err(Error::InvalidInput);
+    }
+
     let (formatted_value, formatted_total) = match erc20_params {
         Some(erc20_params) => {
             let value = Amount {
@@ -263,7 +275,11 @@ async fn verify_standard_transaction(
         .await?;
     }
 
-    let address = super::address::from_pubkey_hash(&recipient);
+    let address_verify = super::address::from_pubkey_hash(&recipient);
+    let address = format!("0x{}", request.address());
+    if address.to_lowercase() != address_verify.to_lowercase() {
+        return Err(Error::InvalidInput);
+    }
     let amount = Amount {
         unit: params.unit,
         decimals: WEI_DECIMALS,
@@ -490,6 +506,7 @@ mod tests {
                 data: b"".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 0,
+                address: String::from("04F264Cf34440313B4A0192A352814FBe927b885")
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\xc3\xae\x24\xc1\x67\xe2\x16\xcf\xb7\x5c\x72\xb5\xe0\x3e\xf9\x7a\xcc\x2b\x60\x7f\x3a\xcf\x63\x86\x5f\x80\x96\x0f\x76\xf6\x56\x47\x0f\x8e\x23\xf1\xd2\x78\x8f\xb0\x07\x0e\x28\xc2\xa5\xc8\xaa\xf1\x5b\x5d\xbf\x30\xb4\x09\x07\xff\x6c\x50\x68\xfd\xcb\xc1\x1a\x2d\x00"
@@ -508,6 +525,7 @@ mod tests {
                 data: b"".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 1,
+                address: hex::encode(b"\x04\xf2\x64\xcf\x34\x44\x03\x13\xb4\xa0\x19\x2a\x35\x28\x14\xfb\xe9\x27\xb8\x85".to_vec()),
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\x28\x91\x11\x77\x0d\xc0\x67\x89\x57\x80\xde\x3e\x9b\x30\x45\x4e\x33\x1b\xa6\x66\x1f\x04\x6e\x9e\x26\x43\x15\x76\xd7\xf0\x8a\x49\x6f\xfe\x6d\xef\xfb\x07\xdd\x8d\x47\x13\xd8\xc5\x23\xb6\xc3\x3b\x53\xdd\x6e\xf2\xdc\x9c\x39\x4d\x6e\x21\xf6\x43\x07\xd2\xbc\xf0\x01"
@@ -562,6 +580,10 @@ mod tests {
             data: b"".to_vec(),
             host_nonce_commitment: None,
             chain_id: 0,
+            address: hex::encode(
+                b"\x04\xf2\x64\xcf\x34\x44\x03\x13\xb4\xa0\x19\x2a\x35\x28\x14\xfb\xe9\x27\xb8\x85"
+                    .to_vec()
+            ),
         })))
         .is_ok());
         assert_eq!(unsafe { UI_COUNTER }, 1);
@@ -613,6 +635,7 @@ mod tests {
             data: b"".to_vec(),
             host_nonce_commitment: None,
             chain_id: 1,
+            address: hex::encode(b"\x04\xf2\x64\xcf\x34\x44\x03\x13\xb4\xa0\x19\x2a\x35\x28\x14\xfb\xe9\x27\xb8\x85".to_vec()),
         })))
         .is_ok());
         assert_eq!(unsafe { UI_COUNTER }, 1);
@@ -666,6 +689,7 @@ mod tests {
             data: b"".to_vec(),
             host_nonce_commitment: None,
             chain_id: 5,
+            address: String::from("04F264Cf34440313B4A0192A352814FBe927b885"),
         })))
         .unwrap();
         assert_eq!(unsafe { CONFIRM_COUNTER }, 1);
@@ -718,6 +742,7 @@ mod tests {
                 data: b"foo bar".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 0,
+                address: String::from("04F264Cf34440313B4A0192A352814FBe927b885")
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\x7d\x3f\x37\x13\xe3\xcf\x10\x82\x79\x1d\x5c\x0f\xc6\x8e\xc2\x9e\xaf\xf5\xe1\xee\x84\x67\xa8\xec\x54\x7d\xc7\x96\xe8\x5a\x79\x04\x2b\x7c\x01\x69\x2f\xb7\x2f\x55\x76\xab\x50\xdc\xaa\x62\x1a\xd1\xee\xab\xd9\x97\x59\x73\xb8\x62\x56\xf4\x0c\x6f\x85\x50\xef\x44\x00"
@@ -773,6 +798,7 @@ mod tests {
                 data: b"foo bar".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 1,
+                address: String::from("04F264Cf34440313B4A0192A352814FBe927b885"),
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\xc5\xd9\x63\x9a\x77\x8a\x34\x15\xf6\x3a\x11\xc0\x3a\x58\xbe\xde\x6b\x3c\xaf\xff\x4f\x2c\xe6\xea\x16\x41\x1e\x76\xfb\xa9\x46\xf7\x21\x66\xf0\x9e\x31\x3c\x07\xe7\x8b\x7b\x1f\xff\x87\x45\x0c\x43\x21\x17\x0c\x02\xdf\x2d\x36\xc4\x4c\x3a\x02\x1a\xbf\x20\x54\x60\x01"
@@ -814,6 +840,7 @@ mod tests {
                 data: b"\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe6\xce\x0a\x09\x2a\x99\x70\x0c\xd4\xcc\xcc\xbb\x1f\xed\xc3\x9c\xf5\x3e\x63\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x65\xc0\x40".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 1,
+                address: String::from("E6CE0a092A99700CD4ccCcBb1fEDc39Cf53E6330")
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\x67\x4e\x9a\x01\x70\xee\xe0\xca\x8c\x40\x6e\xc9\xa7\xdf\x2e\x3a\x6b\xdd\x17\x9c\xf6\x93\x85\x80\x0e\x1f\xd3\x78\xe7\xcf\xb1\x9c\x4d\x55\x16\x2c\x54\x7b\x04\xd1\x81\x8e\x43\x90\x16\x91\xae\xc9\x88\xef\x75\xcd\x67\xd9\xbb\x30\x1d\x14\x90\x2f\xd6\xe6\x92\x92\x01"
@@ -832,6 +859,7 @@ mod tests {
                 data: b"\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe6\xce\x0a\x09\x2a\x99\x70\x0c\xd4\xcc\xcc\xbb\x1f\xed\xc3\x9c\xf5\x3e\x63\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x65\xc0\x40".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 1,
+                address: hex::encode(b"\xda\xc1\x7f\x95\x8d\x2e\xe5\x23\xa2\x20\x62\x06\x99\x45\x97\xc1\x3d\x83\x1e\xc7".to_vec()),
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\x31\x62\x48\x78\x80\xab\xde\xa1\xf3\x52\xd9\xa4\xe3\xd5\x60\x66\xf1\x22\xf0\x4f\xf1\x12\x11\x7c\x8c\xa3\xcd\x22\x0f\x16\x66\x30\x2d\xac\xd5\xe5\xe8\xda\x4c\xd3\x97\x04\xe3\x34\x43\xa9\xa7\xf3\x26\x02\xd3\x32\xbb\x52\x56\x7c\x2e\x34\xaa\xfe\x9e\xd4\x8f\xeb\x01"
@@ -872,6 +900,7 @@ mod tests {
                 data: b"\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x85\x7b\x3d\x96\x9e\xac\xb7\x75\xa9\xf7\x9c\xab\xc6\x2e\xc4\xbb\x1d\x1c\xd6\x0e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x98\xa6\x3c\xbe\xb8\x59\xd0\x27\xb0".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 0,
+                address: String::from("857B3D969eAcB775a9f79cabc62Ec4bB1D1cd60e")
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\xec\x6e\x53\x0c\x8e\xe2\x54\x34\xfc\x44\x0e\x9a\xc0\xf8\x88\xe9\xc6\x3c\xf0\x7e\xbc\xf1\xc2\xf8\xa8\x3e\x2e\x8c\x39\x83\x2c\x55\x15\x12\x71\x6f\x6e\x1a\x8b\x66\xce\x38\x11\xa7\x26\xbc\xb2\x44\x66\x4e\xf2\x6f\x98\xee\x35\xc0\xc9\xdb\x4c\xaa\xb0\x73\x98\x56\x00"
@@ -890,6 +919,7 @@ mod tests {
                 data: b"\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x85\x7b\x3d\x96\x9e\xac\xb7\x75\xa9\xf7\x9c\xab\xc6\x2e\xc4\xbb\x1d\x1c\xd6\x0e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x98\xa6\x3c\xbe\xb8\x59\xd0\x27\xb0".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 1,
+                address: hex::encode(b"\x9c\x23\xd6\x7a\xea\x7b\x95\xd8\x09\x42\xe3\x83\x6b\xcd\xf7\xe7\x08\xa7\x47\xc1".to_vec()),
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\x82\x03\xd8\x0b\x60\x0d\xce\x8e\x77\xcd\xcb\x11\x9d\x45\xdb\x7f\x60\xd7\xca\x34\xe7\x36\x91\x40\xe9\x2d\x93\x91\x92\x21\xf8\x5a\x0a\x11\x9d\x24\x64\xdf\xab\x65\x83\x30\x95\xc1\x27\x63\xfe\xd3\x7c\x07\x2f\xeb\x29\x61\x0e\x14\x37\xf3\x88\x95\x8d\x77\x56\x28\x01"
@@ -913,6 +943,10 @@ mod tests {
             data: b"".to_vec(),
             host_nonce_commitment: None,
             chain_id: 0,
+            address: hex::encode(
+                b"\x04\xf2\x64\xcf\x34\x44\x03\x13\xb4\xa0\x19\x2a\x35\x28\x14\xfb\xe9\x27\xb8\x85"
+                    .to_vec(),
+            ),
         };
 
         {
@@ -1051,6 +1085,10 @@ mod tests {
             data: b"".to_vec(),
             host_nonce_commitment: None,
             chain_id: 1,
+            address: hex::encode(
+                b"\x04\xf2\x64\xcf\x34\x44\x03\x13\xb4\xa0\x19\x2a\x35\x28\x14\xfb\xe9\x27\xb8\x85"
+                    .to_vec(),
+            ),
         };
 
         {
@@ -1146,6 +1184,7 @@ mod tests {
                 data: b"".to_vec(),
                 host_nonce_commitment: None,
                 chain_id: 12345,
+                address: String::from("04F264Cf34440313B4A0192A352814FBe927b885")
             }))),
             Ok(Response::Sign(pb::EthSignResponse {
                 signature: b"\xb1\xb6\xb3\x4e\x15\xa0\x30\x9d\xdc\x26\x03\xdf\x4c\x40\x38\xea\x86\x65\xed\x85\xd3\xf2\xc8\x1e\x7f\x1a\xa0\x25\x4b\x21\x38\x72\x0d\x60\x1f\x42\x19\xfb\x29\xab\x3d\x5f\xf7\x76\xea\xe1\xbe\x15\x26\xb4\x67\xe2\xb0\xe6\x30\xe8\xe6\x34\xa4\xda\x4a\x82\x2e\x39\x00".to_vec()

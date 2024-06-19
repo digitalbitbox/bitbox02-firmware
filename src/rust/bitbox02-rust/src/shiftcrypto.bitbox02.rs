@@ -1248,6 +1248,8 @@ pub struct EthSignRequest {
     /// If non-zero, `coin` is ignored and `chain_id` is used to identify the network.
     #[prost(uint64, tag = "10")]
     pub chain_id: u64,
+    #[prost(string, tag = "11")]
+    pub address: ::prost::alloc::string::String,
 }
 /// TX payload for an EIP-1559 (type 2) transaction: <https://eips.ethereum.org/EIPS/eip-1559>
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1279,6 +1281,8 @@ pub struct EthSignEip1559Request {
     pub data: ::prost::alloc::vec::Vec<u8>,
     #[prost(message, optional, tag = "10")]
     pub host_nonce_commitment: ::core::option::Option<AntiKleptoHostNonceCommitment>,
+    #[prost(string, tag = "11")]
+    pub address: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
