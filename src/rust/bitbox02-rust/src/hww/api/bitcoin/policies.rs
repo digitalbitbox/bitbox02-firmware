@@ -30,9 +30,10 @@ use miniscript::TranslatePk;
 
 use crate::bip32;
 use crate::workflow::confirm;
-use crate::xpubcache::Bip32XpubCache;
 
-use bitcoin::taproot::{LeafVersion, TapLeafHash, TapTweakHash};
+use bitcoin::taproot::TapTweakHash;
+#[cfg(feature = "policies-taproot")]
+use bitcoin::taproot::{LeafVersion, TapLeafHash};
 
 use sha2::{Digest, Sha256};
 
@@ -200,11 +201,13 @@ impl Wsh<String> {
 }
 
 /// See `ParsedPolicy`.
+#[cfg(feature = "policies-taproot")]
 #[derive(Debug)]
 pub struct Tr<T: miniscript::MiniscriptKey> {
     inner: miniscript::descriptor::Tr<T>,
 }
 
+#[cfg(feature = "policies-taproot")]
 impl Tr<bitcoin::PublicKey> {
     /// Returns the serialized Taproot output key.
     pub fn output_key(&self) -> [u8; 32] {
@@ -230,6 +233,7 @@ impl Tr<bitcoin::PublicKey> {
     }
 }
 
+#[cfg(feature = "policies-taproot")]
 impl Tr<String> {
     /// Iterates over the placeholder keys in each tapscript leaf and over the internal key.
     /// Example: `tr(A,{pk(B),pk(C)}` iterates over B,C,A.
@@ -243,6 +247,7 @@ impl Tr<String> {
 
 pub enum TaprootSpendInfo {
     KeySpend(TapTweakHash),
+    #[cfg(feature = "policies-taproot")]
     ScriptSpend(TapLeafHash),
 }
 
@@ -257,6 +262,7 @@ pub enum Descriptor<T: miniscript::MiniscriptKey> {
     // `wsh(...)` policies
     Wsh(Wsh<T>),
     // `tr(...)` Taproot policies
+    #[cfg(feature = "policies-taproot")]
     Tr(Tr<T>),
 }
 
@@ -278,6 +284,7 @@ impl<'a> ParsedPolicy<'a> {
     fn iter_pk(&self) -> alloc::boxed::Box<dyn Iterator<Item = String> + '_> {
         match &self.descriptor {
             Descriptor::Wsh(wsh) => alloc::boxed::Box::new(wsh.iter_pk()),
+            #[cfg(feature = "policies-taproot")]
             Descriptor::Tr(tr) => alloc::boxed::Box::new(tr.iter_pk()),
         }
     }
@@ -483,6 +490,7 @@ impl<'a> ParsedPolicy<'a> {
                 };
                 Ok(Descriptor::Wsh(Wsh { miniscript_expr }))
             }
+            #[cfg(feature = "policies-taproot")]
             Descriptor::Tr(Tr { inner }) => {
                 let derived = match inner.translate_pk(&mut translator) {
                     Ok(m) => m,
@@ -535,9 +543,10 @@ impl<'a> ParsedPolicy<'a> {
     /// This works because all keypaths are distinct per BIP-388, and checked by `validate_keys()`,
     /// so they keypath alone is sufficient to figure out if we are using key path or script
     /// path, and if the latter, which leaf exactly.
+    #[cfg(feature = "policies-taproot")]
     pub fn taproot_spend_info(
         &self,
-        xpub_cache: &mut Bip32XpubCache,
+        xpub_cache: &mut crate::xpubcache::Bip32XpubCache,
         keypath: &[u32],
     ) -> Result<TaprootSpendInfo, Error> {
         match self.derive_at_keypath(keypath)? {
@@ -602,6 +611,7 @@ pub fn parse(policy: &Policy, coin: BtcCoin) -> Result<ParsedPolicy, Error> {
             }
         }
         // Match tr(...).
+        #[cfg(feature = "policies-taproot")]
         [b't', b'r', b'(', .., b')'] => {
             // During parsing, the leaf scripts are created using `Minicript::from_str()`, which
             // calls the equivalent of the sanity check. We call it anyway below in case the

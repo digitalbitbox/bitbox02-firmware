@@ -152,6 +152,7 @@ impl Payload {
     /// derived using keypath m/48'/1'/0'/3'/11/5 derives the payload for
     /// wsh(and_v(v:pk(@0/11/5),pk(@1/21/5))).
     pub fn from_policy(
+        #[allow(unused_variables)] // unused if policies-taproot feature is disabled
         params: &Params,
         policy: &super::policies::ParsedPolicy,
         keypath: &[u32],
@@ -162,6 +163,7 @@ impl Payload {
                 data: Sha256::digest(wsh.witness_script()).to_vec(),
                 output_type: BtcOutputType::P2wsh,
             }),
+            #[cfg(feature = "policies-taproot")]
             super::policies::Descriptor::Tr(tr) => {
                 if params.taproot_support {
                     Ok(Payload {

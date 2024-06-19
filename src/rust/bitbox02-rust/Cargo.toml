@@ -119,3 +119,8 @@ testing = [
 ]
 
 c-unit-testing = []
+
+# Enable tr(...) wallet policies. This is enabled for testing to keep the code maintained, but
+# disabled for release, as it incurs a lot of binary bloat (~47kB at the time of writing).
+# See also: https://github.com/rust-bitcoin/rust-miniscript/issues/585
+policies-taproot = []

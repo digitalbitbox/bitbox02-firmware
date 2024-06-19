@@ -251,14 +251,15 @@ fn validate_input(
 }
 
 fn is_taproot(script_config_account: &ValidatedScriptConfigWithKeypath) -> bool {
-    matches!(
-        script_config_account.config,
-        ValidatedScriptConfig::SimpleType(SimpleType::P2tr)
-            | ValidatedScriptConfig::Policy(super::policies::ParsedPolicy {
-                descriptor: super::policies::Descriptor::Tr(_),
-                ..
-            })
-    )
+    match script_config_account.config {
+        ValidatedScriptConfig::SimpleType(SimpleType::P2tr) => true,
+        #[cfg(feature = "policies-taproot")]
+        ValidatedScriptConfig::Policy(super::policies::ParsedPolicy {
+            descriptor: super::policies::Descriptor::Tr(_),
+            ..
+        }) => true,
+        _ => false,
+    }
 }
 
 /// Generates the subscript (scriptCode without the length prefix) used in the bip143 sighash algo.
@@ -302,6 +303,7 @@ fn sighash_script(
         } => match policy.derive_at_keypath(keypath)? {
             super::policies::Descriptor::Wsh(wsh) => Ok(wsh.witness_script()),
             // This function is only called for SegWit v0 inputs.
+            #[cfg(feature = "policies-taproot")]
             _ => Err(Error::Generic),
         },
     }
@@ -957,6 +959,7 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
                         None,
                     ))
                 }
+                #[cfg(feature = "policies-taproot")]
                 ValidatedScriptConfig::Policy(policy) => {
                     // Get the Taproot tweak based on whether we spend using the internal key (key
                     // path spend) or if we spend using a leaf script. For key path spends, we must
@@ -976,10 +979,10 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
                 hash_sequences: hash_sequence.into(),
                 hash_outputs: hash_outputs.into(),
                 input_index,
-                tapleaf_hash: if let TaprootSpendInfo::ScriptSpend(leaf_hash) = &spend_info {
-                    Some(leaf_hash.to_byte_array())
-                } else {
-                    None
+                tapleaf_hash: match &spend_info {
+                    #[cfg(feature = "policies-taproot")]
+                    TaprootSpendInfo::ScriptSpend(leaf_hash) => Some(leaf_hash.to_byte_array()),
+                    _ => None,
                 },
             });
 
@@ -987,10 +990,10 @@ async fn _process(request: &pb::BtcSignInitRequest) -> Result<Response, Error> {
             next_response.next.signature = bitbox02::keystore::secp256k1_schnorr_sign(
                 &tx_input.keypath,
                 &sighash,
-                if let TaprootSpendInfo::KeySpend(tweak_hash) = &spend_info {
-                    Some(tweak_hash.as_byte_array())
-                } else {
-                    None
+                match &spend_info {
+                    TaprootSpendInfo::KeySpend(tweak_hash) => Some(tweak_hash.as_byte_array()),
+                    #[cfg(feature = "policies-taproot")]
+                    _ => None,
                 },
             )?
             .to_vec();
