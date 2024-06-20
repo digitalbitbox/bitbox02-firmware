@@ -17,6 +17,7 @@
 #if !defined(TESTING)
 #include "usb_protocol.h"
 #endif
+#include "util.h"
 #include <string.h>
 
 /**
@@ -61,6 +62,7 @@ static int32_t _enable(struct usbd_descriptors* desc, struct usbdf_driver* drv)
         desc->sod = ep;
         if (NULL != ep) {
             ep_desc.bEndpointAddress = ep[2];
+            // traceln("Found endpoint 0x%02x for interface",ep_desc.bEndpointAddress);
             ep_desc.bmAttributes = ep[3];
             ep_desc.wMaxPacketSize = usb_get_u16(ep + 4);
             if (usb_d_ep_init(
