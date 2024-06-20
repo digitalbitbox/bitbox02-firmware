@@ -339,6 +339,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=600")
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
 add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 
+# LTO doesn't play well with `-Wl,--wrap` that we are using for unit tests
+if(CMAKE_CROSSCOMPILING)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+endif()
 
 # protoc is used to generate API messages
 find_program(PROTOC protoc)

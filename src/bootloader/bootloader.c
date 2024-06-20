@@ -190,15 +190,10 @@ static void _render_bootloader_finished_marker(void)
     delay_ms(30);
 }
 
-void _binExec(void* l_code_addr) __attribute__((noreturn));
-void _binExec(void* l_code_addr)
+void _binExec(const uint32_t* l_code_addr) __attribute__((noreturn));
+void _binExec(const uint32_t* l_code_addr)
 {
-    __asm__(
-        "mov   r1, r0        \n"
-        "ldr   r0, [r1, #4]  \n"
-        "ldr   sp, [r1]      \n"
-        "blx   r0");
-    (void)l_code_addr;
+    __asm__ volatile("bx   %0" : : "r"(l_code_addr[1]));
     __builtin_unreachable();
 }
 
