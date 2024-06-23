@@ -50,7 +50,7 @@ lazy_static = { workspace = true, optional = true }
 hmac = { version = "0.12.1", default-features = false, features = ["reset"] }
 
 miniscript = { version = "12.0.0", default-features = false, features = ["no-std"], optional = true }
-bitcoin = { workspace = true, optional = true }
+bitcoin = { workspace = true }
 # We don't rely on this dep directly, the miniscript/bitcoin deps do. We list it here to enable the
 # small-hash feature to reduce the binary size, saving around 2784 bytes (as measured at time of
 # writing, this might fluctuate over time).
@@ -64,57 +64,43 @@ features = ["prost-derive"]
 
 [features]
 ed25519 = [
-  # enable these dependencies
-  "bip32-ed25519",
-  "ed25519-dalek"
+  "dep:bip32-ed25519",
+  "dep:ed25519-dalek"
 ]
 
 app-ethereum = [
-  # enable these dependencies
-  "erc20_params",
-  "sha3",
-  "num-bigint",
-  "num-traits",
-  # enable this feature in the deps
+  "dep:erc20_params",
+  "dep:sha3",
+  "dep:num-bigint",
+  "dep:num-traits",
   "bitbox02/app-ethereum",
 ]
 
 app-bitcoin = [
-  # enable these dependencies
-  "bech32",
-  "miniscript",
-  "bitcoin",
-  # enable this feature in the deps
+  "dep:bech32",
+  "dep:miniscript",
   "bitbox02/app-bitcoin",
 ]
 app-litecoin = [
-  # enable these dependencies
-  "bech32",
-  # enable this feature in the deps
+  "dep:bech32",
   "bitbox02/app-litecoin",
 ]
 
 app-u2f = [
-  # enable this feature in the deps
   "bitbox02/app-u2f",
 ]
 
 app-cardano = [
-  # enable these deps
-  "bech32",
-  "blake2",
-  "minicbor",
-  "crc",
+  "dep:bech32",
+  "dep:blake2",
+  "dep:minicbor",
+  "dep:crc",
 
-  # enable these features
   "ed25519"
 ]
 
 testing = [
-  # enable these deps
-  "lazy_static",
-
-  # enable these features
+  "dep:lazy_static",
   "bitbox02/testing"
 ]
 
