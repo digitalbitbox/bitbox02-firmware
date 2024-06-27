@@ -343,7 +343,7 @@ add_custom_target(rust-bindgen
     --allowlist-function keystore_secp256k1_compressed_to_uncompressed
     --allowlist-function keystore_secp256k1_nonce_commit
     --allowlist-function keystore_secp256k1_sign
-    --allowlist-function keystore_secp256k1_schnorr_bip86_sign
+    --allowlist-function keystore_secp256k1_schnorr_sign
     --allowlist-function keystore_bip39_mnemonic_to_seed
     --allowlist-function keystore_mock_unlocked
     --allowlist-var EC_PUBLIC_KEY_UNCOMPRESSED_LEN

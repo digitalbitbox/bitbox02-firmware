@@ -295,12 +295,15 @@ USE_RESULT bool keystore_secp256k1_schnorr_bip86_pubkey(
  * @param[in] keypath derivation keypath
  * @param[in] keypath_len number of elements in keypath
  * @param[in] msg32 32 byte message to sign
+ * @param[in] tweak 32 bytes, tweak private key before signing with this tweak. Use NULL to not
+ *            tweak.
  * @param[out] sig64_out resulting 64 byte signature
  */
-USE_RESULT bool keystore_secp256k1_schnorr_bip86_sign(
+USE_RESULT bool keystore_secp256k1_schnorr_sign(
     const uint32_t* keypath,
     size_t keypath_len,
     const uint8_t* msg32,
+    const uint8_t* tweak,
     uint8_t* sig64_out);
 
 #ifdef TESTING

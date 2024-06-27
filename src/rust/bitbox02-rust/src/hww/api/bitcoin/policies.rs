@@ -1,4 +1,4 @@
-// Copyright 2023 Shift Crypto AG
+// Copyright 2023-2024 Shift Crypto AG
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,10 @@ use miniscript::TranslatePk;
 
 use crate::bip32;
 use crate::workflow::confirm;
+
+use bitcoin::taproot::TapTweakHash;
+#[cfg(feature = "policies-taproot")]
+use bitcoin::taproot::{LeafVersion, TapLeafHash};
 
 use sha2::{Digest, Sha256};
 
@@ -100,7 +104,8 @@ fn parse_wallet_policy_pk(pk: &str) -> Result<(usize, u32, u32), ()> {
 }
 
 /// Given policy pubkeys like `@0/<left;right>/*` and the keys list, determine if the given keypath
-/// is valid and whether it points to a receive or change address.
+/// is valid and whether it points to a receive or change address. We also return the matched
+/// pubkey.
 ///
 /// Example: pubkeys "@0/<10;11>/*" and "@1/<20;21>/*", with our key [fp/48'/1'/0'/3']xpub...],
 /// derived using keypath m/48'/1'/0'/3'/11/5 means that this is the address index 5 at the change
@@ -187,12 +192,78 @@ impl Wsh<bitcoin::PublicKey> {
     }
 }
 
+impl Wsh<String> {
+    /// Iterates over all pubkey placeholders in this wsh descriptor.
+    /// Example: wsh(and_v(v:pk(A),pk(B))) iterates over A, B.
+    fn iter_pk(&self) -> impl Iterator<Item = String> + '_ {
+        self.miniscript_expr.iter_pk()
+    }
+}
+
 /// See `ParsedPolicy`.
+#[cfg(feature = "policies-taproot")]
+#[derive(Debug)]
+pub struct Tr<T: miniscript::MiniscriptKey> {
+    inner: miniscript::descriptor::Tr<T>,
+}
+
+#[cfg(feature = "policies-taproot")]
+impl Tr<bitcoin::PublicKey> {
+    /// Returns the serialized Taproot output key.
+    pub fn output_key(&self) -> [u8; 32] {
+        self.inner.spend_info().output_key().serialize()
+    }
+
+    /// Returns the tap leaf hash (as defined in BIP341) of the leaf whose script contains the given
+    /// pubkey (serialized as a compressed pubkey). If the pubkey is not present in any leaf script,
+    /// None is returned.
+    ///
+    /// Note that we assume that each pubkey is unique according to BIP-388 and validated by
+    /// `validate_keys()`, so the leaf is unique.
+    fn get_leaf_hash_by_pubkey(&self, pk: &[u8; 33]) -> Option<TapLeafHash> {
+        for (_, ms) in self.inner.iter_scripts() {
+            if ms.iter_pk().any(|pk2| *pk == pk2.inner.serialize()) {
+                return Some(TapLeafHash::from_script(
+                    &ms.encode(),
+                    LeafVersion::TapScript,
+                ));
+            }
+        }
+        None
+    }
+}
+
+#[cfg(feature = "policies-taproot")]
+impl Tr<String> {
+    /// Iterates over the placeholder keys in each tapscript leaf and over the internal key.
+    /// Example: `tr(A,{pk(B),pk(C)}` iterates over B,C,A.
+    fn iter_pk(&self) -> impl Iterator<Item = String> + '_ {
+        self.inner
+            .iter_scripts()
+            .flat_map(|(_, ms)| ms.iter_pk())
+            .chain(core::iter::once(self.inner.internal_key().clone()))
+    }
+}
+
+pub enum TaprootSpendInfo {
+    KeySpend(TapTweakHash),
+    #[cfg(feature = "policies-taproot")]
+    ScriptSpend(TapLeafHash),
+}
+
+/// See `ParsedPolicy`.
+///
+/// We don't use `miniscript::descriptor::Descriptor` as it supports much more than what we want
+/// (Bare, Sh, ...) and pulls in a lot of additional code to support them, their script generation,
+/// etc., bloating the firmware binary size significantly (at least +50kB). By wrapping/parsing only
+/// the descriptors we want to support, we avoid this binary bloat.
 #[derive(Debug)]
 pub enum Descriptor<T: miniscript::MiniscriptKey> {
     // `wsh(...)` policies
     Wsh(Wsh<T>),
-    // `tr(...)` Taproot etc. in the future.
+    // `tr(...)` Taproot policies
+    #[cfg(feature = "policies-taproot")]
+    Tr(Tr<T>),
 }
 
 /// Result of `parse()`.
@@ -208,46 +279,56 @@ pub struct ParsedPolicy<'a> {
 }
 
 impl<'a> ParsedPolicy<'a> {
+    /// Iterates over the placeholder keys in this descriptor. For tr() descriptors, this covers the
+    /// internal key and every key in every leaf script.
+    fn iter_pk(&self) -> alloc::boxed::Box<dyn Iterator<Item = String> + '_> {
+        match &self.descriptor {
+            Descriptor::Wsh(wsh) => alloc::boxed::Box::new(wsh.iter_pk()),
+            #[cfg(feature = "policies-taproot")]
+            Descriptor::Tr(tr) => alloc::boxed::Box::new(tr.iter_pk()),
+        }
+    }
+
     /// Check that it is impossible to create a derivation with duplicate pubkeys, assuming all the
     /// keys in the key vector are distinct.
     ///
-    /// Even though the rust-miniscript library checks for duplicate keys, it does so on the raw
-    /// miniscript, which would not catch e.g. that `wsh(or_b(pk(@0/<0;1>/*),s:pk(@0/<2;1>/*)))` has
-    /// a duplicate change derivation if we derive at the receive path.
+    /// Even though the rust-miniscript library checks for duplicate keys (per miniscript expr), it
+    /// does so on the raw miniscript, which would not catch e.g. that
+    /// `wsh(or_b(pk(@0/<0;1>/*),s:pk(@0/<2;1>/*)))` has a duplicate change derivation if we derive
+    /// at the receive path.
+    ///
+    /// For tr() descriptors, technically one can have duplicate keys as long as they are not in the
+    /// same leaf script, but BIP-388 prohibits duplicate keys across all parts for simplicity.
     ///
     /// Also checks that each key is used, e.g. if there are 3 keys in the key vector, @0, @1 and @2
     /// must be present.
     fn validate_keys(&self) -> Result<(), Error> {
-        match &self.descriptor {
-            Descriptor::Wsh(Wsh { miniscript_expr }) => {
-                // in "@key_index/<left;right>", keeps track of (key_index,left) and
-                // (key_index,right) to check for duplicates.
-                let mut derivations_seen: Vec<(usize, u32)> = Vec::new();
+        // in "@key_index/<left;right>", keeps track of (key_index,left) and
+        // (key_index,right) to check for duplicates.
+        let mut derivations_seen: Vec<(usize, u32)> = Vec::new();
 
-                let mut keys_seen: Vec<bool> = vec![false; self.policy.keys.len()];
+        let mut keys_seen: Vec<bool> = vec![false; self.policy.keys.len()];
 
-                for pk in miniscript_expr.iter_pk() {
-                    let (key_index, multipath_index_left, multipath_index_right) =
-                        parse_wallet_policy_pk(&pk).or(Err(Error::InvalidInput))?;
+        for pk in self.iter_pk() {
+            let (key_index, multipath_index_left, multipath_index_right) =
+                parse_wallet_policy_pk(pk.as_ref()).or(Err(Error::InvalidInput))?;
 
-                    if derivations_seen.contains(&(key_index, multipath_index_left)) {
-                        return Err(Error::InvalidInput);
-                    }
-                    derivations_seen.push((key_index, multipath_index_left));
-                    if derivations_seen.contains(&(key_index, multipath_index_right)) {
-                        return Err(Error::InvalidInput);
-                    }
-                    derivations_seen.push((key_index, multipath_index_right));
-
-                    *keys_seen.get_mut(key_index).ok_or(Error::InvalidInput)? = true;
-                }
-
-                if !keys_seen.into_iter().all(|b| b) {
-                    return Err(Error::InvalidInput);
-                }
-                Ok(())
+            if derivations_seen.contains(&(key_index, multipath_index_left)) {
+                return Err(Error::InvalidInput);
             }
+            derivations_seen.push((key_index, multipath_index_left));
+            if derivations_seen.contains(&(key_index, multipath_index_right)) {
+                return Err(Error::InvalidInput);
+            }
+            derivations_seen.push((key_index, multipath_index_right));
+
+            *keys_seen.get_mut(key_index).ok_or(Error::InvalidInput)? = true;
         }
+
+        if !keys_seen.into_iter().all(|b| b) {
+            return Err(Error::InvalidInput);
+        }
+        Ok(())
     }
 
     /// Validate a policy.
@@ -409,6 +490,15 @@ impl<'a> ParsedPolicy<'a> {
                 };
                 Ok(Descriptor::Wsh(Wsh { miniscript_expr }))
             }
+            #[cfg(feature = "policies-taproot")]
+            Descriptor::Tr(Tr { inner }) => {
+                let derived = match inner.translate_pk(&mut translator) {
+                    Ok(m) => m,
+                    Err(miniscript::TranslateErr::TranslatorErr(e)) => return Err(e),
+                    Err(miniscript::TranslateErr::OuterError(_)) => return Err(Error::Generic),
+                };
+                Ok(Descriptor::Tr(Tr { inner: derived }))
+            }
         }
     }
 
@@ -421,37 +511,68 @@ impl<'a> ParsedPolicy<'a> {
         &self,
         keypath: &[u32],
     ) -> Result<Descriptor<bitcoin::PublicKey>, Error> {
-        match &self.descriptor {
-            Descriptor::Wsh(Wsh { miniscript_expr }) => {
-                let (is_change, address_index) = get_change_and_address_index(
-                    miniscript_expr.iter_pk(),
-                    &self.policy.keys,
-                    &self.is_our_key,
-                    keypath,
-                )?;
-                self.derive(is_change, address_index)
-            }
-        }
+        let (is_change, address_index) = get_change_and_address_index(
+            self.iter_pk(),
+            &self.policy.keys,
+            &self.is_our_key,
+            keypath,
+        )?;
+        self.derive(is_change, address_index)
     }
 
     /// Returns true if the address-level keypath points to a change address.
     pub fn is_change_keypath(&self, keypath: &[u32]) -> Result<bool, Error> {
-        match &self.descriptor {
-            Descriptor::Wsh(Wsh { miniscript_expr }) => {
-                let (is_change, _) = get_change_and_address_index(
-                    miniscript_expr.iter_pk(),
-                    &self.policy.keys,
-                    &self.is_our_key,
-                    keypath,
-                )?;
-                Ok(is_change)
+        let (is_change, _) = get_change_and_address_index(
+            self.iter_pk(),
+            &self.policy.keys,
+            &self.is_our_key,
+            keypath,
+        )?;
+        Ok(is_change)
+    }
+
+    /// Returns info needed to spend a Taproot UTXO at the given keypath.
+    ///
+    /// If the keypath points to the Taproot internal key, we return the necessary Taproot tweak to
+    /// spend using the Taproot key path.
+    ///
+    /// If th keypath points to a key used in a tap leaf script, we return the tap leaf hash (as
+    /// defined in BIP341), which is needed to in the sighash computation in the context of a
+    /// Taproot leaf script.
+    ///
+    /// This works because all keypaths are distinct per BIP-388, and checked by `validate_keys()`,
+    /// so they keypath alone is sufficient to figure out if we are using key path or script
+    /// path, and if the latter, which leaf exactly.
+    #[cfg(feature = "policies-taproot")]
+    pub fn taproot_spend_info(
+        &self,
+        xpub_cache: &mut crate::xpubcache::Bip32XpubCache,
+        keypath: &[u32],
+    ) -> Result<TaprootSpendInfo, Error> {
+        match self.derive_at_keypath(keypath)? {
+            Descriptor::Tr(tr) => {
+                let xpub = xpub_cache.get_xpub(keypath)?;
+                let is_keypath_spend =
+                    xpub.public_key() == tr.inner.internal_key().inner.serialize();
+
+                if is_keypath_spend {
+                    Ok(TaprootSpendInfo::KeySpend(
+                        tr.inner.spend_info().tap_tweak(),
+                    ))
+                } else {
+                    let leaf_hash = tr
+                        .get_leaf_hash_by_pubkey(xpub.public_key().try_into().unwrap())
+                        .ok_or(Error::InvalidInput)?;
+                    Ok(TaprootSpendInfo::ScriptSpend(leaf_hash))
+                }
             }
+            _ => Err(Error::Generic),
         }
     }
 }
 
 /// Parses a policy as specified by 'Wallet policies': https://github.com/bitcoin/bips/pull/1389.
-/// Only `wsh(<miniscript expression>)` is supported for now.
+/// `wsh(<miniscript expression>)` and `tr(KEY)` and `tr(KEY,TREE)` descriptors are supported.
 /// Example: `wsh(pk(@0/**))`.
 ///
 /// The parsed output keeps the key strings as is (e.g. "@0/**"). They will be processed and
@@ -474,14 +595,34 @@ pub fn parse(policy: &Policy, coin: BtcCoin) -> Result<ParsedPolicy, Error> {
     let parsed = match desc.as_bytes() {
         // Match wsh(...).
         [b'w', b's', b'h', b'(', .., b')'] => {
+            // `Miniscript::from_str` includes the equivalent of `miniscript_expr.sanity_check()`.
+            // We call it anyway below in case the miniscript library extends/changes the main
+            // sanity_check function.
             let miniscript_expr: miniscript::Miniscript<String, miniscript::Segwitv0> =
                 miniscript::Miniscript::from_str(&desc[4..desc.len() - 1])
                     .or(Err(Error::InvalidInput))?;
-
+            miniscript_expr
+                .sanity_check()
+                .map_err(|_| Error::InvalidInput)?;
             ParsedPolicy {
                 policy,
                 is_our_key,
                 descriptor: Descriptor::Wsh(Wsh { miniscript_expr }),
+            }
+        }
+        // Match tr(...).
+        #[cfg(feature = "policies-taproot")]
+        [b't', b'r', b'(', .., b')'] => {
+            // During parsing, the leaf scripts are created using `Minicript::from_str()`, which
+            // calls the equivalent of the sanity check. We call it anyway below in case the
+            // miniscript library extends/changes the main sanity_check function.
+            let tr = miniscript::descriptor::Tr::from_str(desc).map_err(|_| Error::InvalidInput)?;
+            tr.sanity_check().map_err(|_| Error::InvalidInput)?;
+
+            ParsedPolicy {
+                policy,
+                is_our_key,
+                descriptor: Descriptor::Tr(Tr { inner: tr }),
             }
         }
         _ => return Err(Error::InvalidInput),
@@ -551,6 +692,7 @@ mod tests {
     use bitbox02::testing::{mock_unlocked, mock_unlocked_using_mnemonic};
 
     const SOME_XPUB_1: &str = "tpubDFj9SBQssRHA5EB1ox58mcgF9sB61br9RGz6UrBukcNKmFe4fPgskZ4wigxQ1jSUzLdjnvvDHL8Z6L3ey5Ev5FNNqrDrePxwXsNHiLZhBTc";
+    const SOME_XPUB_2: &str = "tpubDCmDXtvJLH9yHLNLnGVRoXBvvacvWskjV4hq4WAmGXcRbfa5uaiybZ7kjGRAFbLaoiw1LcwV56H88avibGh7GC7nqqz2Jcs1dWu33cRKYm4";
 
     const KEYPATH_ACCOUNT: &[u32] = &[48 + HARDENED, 1 + HARDENED, 0 + HARDENED, 3 + HARDENED];
 
@@ -625,6 +767,7 @@ mod tests {
                     vec!["@0/**"]
                 );
             }
+            _ => panic!("expected wsh"),
         }
 
         // Parse another valid example and check that the keys are collected as is as strings.
@@ -641,6 +784,7 @@ mod tests {
                     vec!["@0/**", "@1/**"]
                 );
             }
+            _ => panic!("expected wsh"),
         }
 
         // Unknown top-level fragment.
@@ -683,6 +827,20 @@ mod tests {
         // All good.
         assert!(parse(&make_policy("wsh(pk(@0/**))", &[our_key.clone()]), coin).is_ok());
 
+        // All good, all keys are used across internal key & leaf scripts.
+        assert!(parse(
+            &make_policy(
+                "tr(@0/**,{pk(@1/**),pk(@2/**)})",
+                &[
+                    our_key.clone(),
+                    make_key(SOME_XPUB_1),
+                    make_key(SOME_XPUB_2)
+                ],
+            ),
+            coin
+        )
+        .is_ok());
+
         // Unsupported coins
         for coin in [BtcCoin::Ltc, BtcCoin::Tltc] {
             assert!(matches!(
@@ -709,7 +867,7 @@ mod tests {
             Err(Error::InvalidInput)
         ));
 
-        // Our key is not present - fingerprint and keypath exit but xpub does not match.
+        // Our key is not present - fingerprint and keypath exist but xpub does not match.
         let mut wrong_key = our_key.clone();
         wrong_key.xpub = Some(parse_xpub(SOME_XPUB_1).unwrap());
         assert!(matches!(
@@ -769,7 +927,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_check_dups_in_policy() {
+    fn test_parse_check_dups_in_policy_wsh() {
         mock_unlocked();
 
         let coin = BtcCoin::Tbtc;
@@ -831,6 +989,55 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_check_dups_in_policy_tr() {
+        mock_unlocked();
+
+        let coin = BtcCoin::Tbtc;
+        let our_key = make_our_key(KEYPATH_ACCOUNT);
+
+        // Ok, only internal key.
+        let pol = make_policy("tr(@0/**)", &[our_key.clone()]);
+        assert!(parse(&pol, coin).is_ok());
+
+        // Ok, one leaf with one key.
+        let pol = make_policy(
+            "tr(@0/**,pk(@1/**))",
+            &[our_key.clone(), make_key(SOME_XPUB_1)],
+        );
+        assert!(parse(&pol, coin).is_ok());
+
+        // Ok, one leaf with two keys.
+        let pol = make_policy(
+            "tr(@0/**,or_b(pk(@1/**),s:pk(@2/**)))",
+            &[
+                our_key.clone(),
+                make_key(SOME_XPUB_1),
+                make_key(SOME_XPUB_2),
+            ],
+        );
+        assert!(parse(&pol, coin).is_ok());
+
+        // Duplicate keys across internal key and multiple leafs. Technically okay, but prohibited
+        // by BIP-388.
+        let pol = make_policy("tr(@0/**,pk(@0/**))", &[our_key.clone()]);
+        assert!(parse(&pol, coin).is_err());
+
+        // Duplicate key in one leaf script.
+        let pol = make_policy(
+            "tr(@0/**,or_b(pk(@1/**),s:pk(@1/**)))",
+            &[our_key.clone(), make_key(SOME_XPUB_1)],
+        );
+        assert!(parse(&pol, coin).is_err());
+
+        // Duplicate key inside one leaf script, using same receive but different change.
+        let pol = make_policy(
+            "tr(@0/**,or_b(pk(@1/<0;1>/*),s:pk(@1/<0;2>/*)))",
+            &[our_key.clone(), make_key(SOME_XPUB_1)],
+        );
+        assert!(parse(&pol, coin).is_err());
+    }
+
+    #[test]
     fn test_get_change_and_address_index() {
         mock_unlocked();
         let our_key = make_our_key(KEYPATH_ACCOUNT);
@@ -847,6 +1054,23 @@ mod tests {
                     0 + HARDENED,
                     3 + HARDENED,
                     10,
+                    0,
+                ],
+            ),
+            Ok((false, 0))
+        );
+
+        assert_eq!(
+            get_change_and_address_index(
+                ["@0/<10;11>/*", "@0/<20;21>/*"].iter(),
+                &[our_key.clone()],
+                &[true],
+                &[
+                    48 + HARDENED,
+                    1 + HARDENED,
+                    0 + HARDENED,
+                    3 + HARDENED,
+                    20,
                     0,
                 ],
             ),
@@ -967,6 +1191,7 @@ mod tests {
                 .unwrap();
             match derived {
                 Descriptor::Wsh(wsh) => hex::encode(wsh.witness_script()),
+                _ => panic!("expected wsh"),
             }
         };
         let witness_script_at_keypath = |pol: &str, keys: &[pb::KeyOriginInfo], keypath: &[u32]| {
@@ -976,6 +1201,7 @@ mod tests {
                 .unwrap();
             match derived {
                 Descriptor::Wsh(wsh) => hex::encode(wsh.witness_script()),
+                _ => panic!("expected wsh"),
             }
         };
 
@@ -1075,6 +1301,118 @@ mod tests {
                 ),
                 expected_witness_script,
             );
+        }
+    }
+
+    // Test BIP-86 first test vector:
+    // https://github.com/bitcoin/bips/blob/85cda4e225b4d5fd7aff403f69d827f23f6afbbc/bip-0086.mediawiki#test-vectors
+    #[test]
+    fn test_tr_bip86() {
+        mock_unlocked_using_mnemonic(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            "",
+        );
+        let coin = BtcCoin::Tbtc;
+        let our_key = make_our_key(&[86 + HARDENED, HARDENED, HARDENED]);
+
+        let (is_change, address_index) = (false, 0);
+        let derived = parse(&make_policy("tr(@0/**)", &[our_key.clone()]), coin)
+            .unwrap()
+            .derive(is_change, address_index)
+            .unwrap();
+        match derived {
+            Descriptor::Tr(tr) => {
+                assert_eq!(
+                    hex::encode(tr.output_key()),
+                    "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c"
+                );
+            }
+            _ => panic!("expected tr"),
+        }
+    }
+
+    #[test]
+    fn test_tr_output_key() {
+        mock_unlocked_using_mnemonic(
+            "sudden tenant fault inject concert weather maid people chunk youth stumble grit",
+            "",
+        );
+
+        let coin = BtcCoin::Tbtc;
+        let our_key = make_our_key(KEYPATH_ACCOUNT);
+
+        let output_key =
+            |pol: &str, keys: &[pb::KeyOriginInfo], is_change: bool, address_index: u32| {
+                let derived = parse(&make_policy(pol, keys), coin)
+                    .unwrap()
+                    .derive(is_change, address_index)
+                    .unwrap();
+                match derived {
+                    Descriptor::Tr(tr) => hex::encode(tr.output_key()),
+                    _ => panic!("expected tr"),
+                }
+            };
+        let output_key_at_keypath = |pol: &str, keys: &[pb::KeyOriginInfo], keypath: &[u32]| {
+            let derived = parse(&make_policy(pol, keys), coin)
+                .unwrap()
+                .derive_at_keypath(keypath)
+                .unwrap();
+            match derived {
+                Descriptor::Tr(tr) => hex::encode(tr.output_key()),
+                _ => panic!("expected tr"),
+            }
+        };
+
+        // Test receive path and change path using relative and full keypaths.
+        {
+            const ADDRESS_INDEX: u32 = 5;
+            let expected_receive =
+                "7c8e93a04f41ee302ff08fd4f7348d600431cae1eabe170f287d903771a87395";
+            let expected_change =
+                "b014ba52b642976b952dd028a763a05d039199e87e0c8e9559aa215793b77bd9";
+            let desc = "tr(@0/<10;11>/*,{pk(@0/<20;21>/*),pk(@0/<30;31>/*)})";
+            assert_eq!(
+                output_key(desc, &[our_key.clone()], false, ADDRESS_INDEX),
+                expected_receive
+            );
+            assert_eq!(
+                output_key(desc, &[our_key.clone()], true, ADDRESS_INDEX),
+                expected_change
+            );
+            for receive in [10, 20, 30] {
+                assert_eq!(
+                    output_key_at_keypath(
+                        desc,
+                        &[our_key.clone()],
+                        &[
+                            48 + HARDENED,
+                            1 + HARDENED,
+                            0 + HARDENED,
+                            3 + HARDENED,
+                            receive,
+                            ADDRESS_INDEX,
+                        ],
+                    ),
+                    expected_receive,
+                );
+            }
+            for change in [11, 21, 31] {
+                assert_eq!(
+                    output_key_at_keypath(
+                        desc,
+                        &[our_key.clone()],
+                        &[
+                            48 + HARDENED,
+                            1 + HARDENED,
+                            0 + HARDENED,
+                            3 + HARDENED,
+                            change,
+                            ADDRESS_INDEX,
+                        ],
+                    ),
+                    expected_change,
+                );
+            }
         }
     }
 

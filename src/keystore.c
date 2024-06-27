@@ -941,9 +941,10 @@ bool keystore_secp256k1_schnorr_bip86_pubkey(const uint8_t* pubkey33, uint8_t* p
     return secp256k1_xonly_pubkey_serialize(ctx, pubkey_out, &tweaked_xonly_pubkey) == 1;
 }
 
-static bool _schnorr_bip86_keypair(
+static bool _schnorr_keypair(
     const uint32_t* keypath,
     size_t keypath_len,
+    const uint8_t* tweak,
     secp256k1_keypair* keypair_out,
     secp256k1_xonly_pubkey* pubkey_out)
 {
@@ -962,17 +963,15 @@ static bool _schnorr_bip86_keypair(
     if (!secp256k1_keypair_xonly_pub(ctx, pubkey_out, NULL, keypair_out)) {
         return false;
     }
-    uint8_t pubkey_serialized[32] = {0};
-    if (!secp256k1_xonly_pubkey_serialize(ctx, pubkey_serialized, pubkey_out)) {
-        return false;
+    if (tweak != NULL) {
+        if (secp256k1_keypair_xonly_tweak_add(ctx, keypair_out, tweak) != 1) {
+            return false;
+        }
+        if (!secp256k1_keypair_xonly_pub(ctx, pubkey_out, NULL, keypair_out)) {
+            return false;
+        }
     }
-    uint8_t hash[32] = {0};
-    _tagged_hash("TapTweak", pubkey_serialized, sizeof(pubkey_serialized), hash);
-
-    if (secp256k1_keypair_xonly_tweak_add(ctx, keypair_out, hash) != 1) {
-        return false;
-    }
-    return secp256k1_keypair_xonly_pub(ctx, pubkey_out, NULL, keypair_out) == 1;
+    return true;
 }
 
 static void _cleanup_keypair(secp256k1_keypair* keypair)
@@ -980,15 +979,16 @@ static void _cleanup_keypair(secp256k1_keypair* keypair)
     util_zero(keypair, sizeof(secp256k1_keypair));
 }
 
-bool keystore_secp256k1_schnorr_bip86_sign(
+bool keystore_secp256k1_schnorr_sign(
     const uint32_t* keypath,
     size_t keypath_len,
     const uint8_t* msg32,
+    const uint8_t* tweak,
     uint8_t* sig64_out)
 {
     secp256k1_keypair __attribute__((__cleanup__(_cleanup_keypair))) keypair = {0};
     secp256k1_xonly_pubkey pubkey = {0};
-    if (!_schnorr_bip86_keypair(keypath, keypath_len, &keypair, &pubkey)) {
+    if (!_schnorr_keypair(keypath, keypath_len, tweak, &keypair, &pubkey)) {
         return false;
     }
     const secp256k1_context* ctx = wally_get_secp_context();

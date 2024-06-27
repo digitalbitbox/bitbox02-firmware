@@ -329,13 +329,22 @@ pub fn bip85_ln(index: u32) -> Result<Vec<u8>, ()> {
     }
 }
 
-pub fn secp256k1_schnorr_bip86_sign(keypath: &[u32], msg: &[u8; 32]) -> Result<[u8; 64], ()> {
+pub fn secp256k1_schnorr_sign(
+    keypath: &[u32],
+    msg: &[u8; 32],
+    tweak: Option<&[u8; 32]>,
+) -> Result<[u8; 64], ()> {
     let mut signature = [0u8; 64];
+
     match unsafe {
-        bitbox02_sys::keystore_secp256k1_schnorr_bip86_sign(
+        bitbox02_sys::keystore_secp256k1_schnorr_sign(
             keypath.as_ptr(),
             keypath.len() as _,
             msg.as_ptr(),
+            match tweak {
+                Some(t) => t.as_ptr(),
+                None => core::ptr::null() as *const _,
+            },
             signature.as_mut_ptr(),
         )
     } {
