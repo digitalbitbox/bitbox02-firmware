@@ -1,12 +1,12 @@
 [submodule "external/cryptoauthlib"]
 	path = external/cryptoauthlib
-	url = https://github.com/digitalbitbox/cryptoauthlib.git
+	url = https://github.com/BitBoxSwiss/cryptoauthlib.git
 [submodule "external/ctaes"]
 	path = external/ctaes
-	url = https://github.com/digitalbitbox/ctaes.git
+	url = https://github.com/BitBoxSwiss/ctaes.git
 [submodule "external/libwally-core"]
 	path = external/libwally-core
-	url = https://github.com/digitalbitbox/libwally-core.git
+	url = https://github.com/BitBoxSwiss/libwally-core.git
 [submodule "tools/ttf2ugui"]
 	path = tools/ttf2ugui
-	url = https://github.com/digitalbitbox/ttf2ugui
+	url = https://github.com/BitBoxSwiss/ttf2ugui
