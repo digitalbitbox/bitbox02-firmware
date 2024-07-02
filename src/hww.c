@@ -16,6 +16,7 @@
 
 #include <hardfault.h>
 #include <keystore.h>
+#include <memory/memory.h>
 
 #include <platform_config.h>
 #include <rust/rust.h>
@@ -65,6 +66,7 @@ typedef struct {
  * - For the BitBoxBase platform (deprecated):
  " - 0x00 - Standard
  * 1 byte: 0x00 if the device is locked, 0x01 if the device is unlocked.
+ * 1 byte: 0x00 if the device is uninitialized, 0x01 if the device is initialized.
  * @param[out] buf serialize info to this buffer.
  * @return number of bytes written
  */
@@ -95,6 +97,10 @@ static size_t _api_info(uint8_t* buf)
 
     // 1 byte locked status
     *current = keystore_is_locked() ? 0x00 : 0x01;
+    current++;
+
+    // 1 byte initialized status
+    *current = memory_is_initialized() ? 0x01 : 0x00;
     current++;
 
     return current - buf;

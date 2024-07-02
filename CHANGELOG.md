@@ -15,6 +15,7 @@ customers cannot upgrade their bootloader, its changes are recorded separately.
 - Bitcoin: allow spendung UTXOs at very high BIP-44 address indices
 - Ethereum: allow signing EIP-712 messages containing multi-line strings
 - Allow exiting the screen asking to insert the microSD card
+- HWW: add initialized status byte to _api_info response
 
 ### 9.18.0
 - Add support for deriving BIP-39 mnemonics according to BIP-85

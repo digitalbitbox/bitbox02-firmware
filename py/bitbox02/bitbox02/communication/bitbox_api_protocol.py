@@ -546,7 +546,7 @@ class BitBoxCommonAPI:
             elif device_info["product_string"] == BITBOX02BTC:
                 edition = BitBox02Edition.BTCONLY
         else:
-            version, _, edition, _ = self.get_info(transport)
+            version, _, edition, _, _ = self.get_info(transport)
 
         self.edition = edition
         try:
@@ -680,11 +680,14 @@ class BitBoxCommonAPI:
         return True
 
     @staticmethod
-    def get_info(transport: TransportLayer) -> Tuple[str, Platform, Union[BitBox02Edition], bool]:
+    def get_info(
+        transport: TransportLayer,
+    ) -> Tuple[str, Platform, Union[BitBox02Edition], bool, Optional[bool]]:
         """
-        Returns (version, platform, edition, unlocked).
-        This is useful to get the version of the firmware when a usb descriptor is not available
-        (via BitBoxBridge, etc.).
+        Returns (version, platform, edition, unlocked, initialized).
+        This is useful to get the version of the firmware or the device unlocked/initialized status
+        when a usb descriptor is not available (via BitBoxBridge, etc.). The initialized status is
+        supported from firmware v9.20.0 (it is None if not supported).
         This call does not use a versioned BitBoxProtocol for communication, as the version is not
         available (this call is used to get the version), so it must work for all firmware versions.
         """
@@ -704,9 +707,14 @@ class BitBoxCommonAPI:
         else:
             raise Exception("Unknown platform: {}".format(platform))
 
-        unlocked_byte = response[0]
+        unlocked_byte, response = response[0], response[1:]
         unlocked = {0x00: False, 0x01: True}[unlocked_byte]
-        return (version_str, platform, edition, unlocked)
+
+        initialized = None
+        if parse_device_version(version_str) >= semver.VersionInfo(9, 20, 0):
+            initialized_byte = response[0]
+            initialized = {0x00: False, 0x01: True}[initialized_byte]
+        return (version_str, platform, edition, unlocked, initialized)
 
     def check_min_version(self) -> None:
         """

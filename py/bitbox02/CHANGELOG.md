@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+# 7.0.0
+- get_info: add optional device initialized boolean to returned tuple
+
 # 6.3.0
 - Allow infering product and version via API call instead of via USB descriptor
 - Accept EIP1559 transactions in `eth_sign()` - requires BitBox02 firmware v9.16.0
