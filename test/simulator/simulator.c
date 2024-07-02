@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
             break;
         case 'v':
             printf(
-                "bitbox02-multi-%s-simulator-%s-linux-amd64\n",
+                "bitbox02-multi-%s-simulator%s-linux-amd64\n",
                 DIGITAL_BITBOX_VERSION_SHORT,
                 _simulator_version);
             return 0;
